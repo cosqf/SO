@@ -1,14 +1,12 @@
 #include <string.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
+#include "client/client.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
-typedef struct clientinfo {
-    char* fifoPath;
-    char** command;
-} ClientInfo;
-
-void createClientFifo (char *path, int number) {
-    sprintf (path, "tmp/fifoClient%d", number);
+void createClientFifo (char path[], int number) {
+    sprintf (path, CLIENT_FIFO "%d", number);
 
     if (mkfifo(path, 0666) == -1) {
     perror("mkfifo failed");
@@ -16,52 +14,27 @@ void createClientFifo (char *path, int number) {
     }
 }
 
-ClientInfo* convertInfo (int argc, char** args, char path[]) {
-    ClientInfo* ci = malloc (sizeof (ClientInfo));
-    if (!ci) {
-        perror ("Malloc error");
-        return NULL;
-    }
-    ci->fifoPath = strdup (path);
-    if (!ci->fifoPath) {
-        perror ("Malloc error");
-        free (ci);
-        return NULL;
-    }
-    
-    ci->command = malloc (argc * sizeof (char*));
-    if (!ci->command) {
-        perror ("Malloc error");
-        free (ci->fifoPath);
-        free (ci);
-        return NULL;
-    }
-    // copy the args while excluding the first one (unnecessary)
-    for (int i = 0; i < argc-1; i++) {
-        ci->command[i] = strdup (args[i+1]);
 
-        if (!ci->command[i]) {
-            perror ("Malloc error");
-            for (int j = 0; j < i; j++) free(ci->command[j]);
-            free(ci->command);
-            free(ci->fifoPath);
-            free(ci);
-            return NULL;
-        }
+ClientRequest* convertInfo (int argc, char** args, char path[]) {
+    ClientRequest* req = malloc (sizeof (ClientRequest));
+    if (!req) {
+        perror ("Malloc error");
+        return NULL;
     }
-    ci->command[argc] = NULL;
-    return ci;
+    strncpy(req->fifoPath, path, sizeof(req->fifoPath) - 1);
+    req->fifoPath[sizeof(req->fifoPath) - 1] = '\0';
+
+    // copy the args while excluding the first one (unnecessary)
+    int max_arg = (argc-1 < 8) ? (argc - 1) : 7;
+    for (int i = 0; i < max_arg; i++) {
+        snprintf(req->command[i], sizeof(req->command[i]), "%s", args[i + 1]);
+    }
+    req->command[max_arg][0] = '\0';
+    return req;
 }
 
 
-void freeClientInfo(ClientInfo* ci) {
-    if (!ci) return;
-    free(ci->fifoPath);
-    if (ci->command) {
-        for (int i = 0; ci->command[i]; i++) {
-            free(ci->command[i]);
-        }
-        free(ci->command);
-    }
-    free(ci);
+void freeClientRequest(ClientRequest* req) {
+    if (!req) return;
+    free(req);
 }

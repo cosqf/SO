@@ -1,7 +1,9 @@
-typedef struct clientinfo ClientInfo;
+#include <protocol.h>
 
-void createClientFifo (char *path, int number);
+void createClientFifo (char path[], int number);
 
-ClientInfo* convertInfo (int argc, char** args, char path[]);
+ClientRequest* convertInfo (int argc, char** args, char path[]);
 
-void freeClientInfo(ClientInfo* ci);
+void freeClientRequest(ClientRequest* ci);
+
+#define CLIENT_FIFO "tmp/fifoClient"
