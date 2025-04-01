@@ -1,0 +1,1 @@
+int convertToNumber (char* string);

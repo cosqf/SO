@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <utils.h>
 
 /*
 O programa servidor é responsável por registar meta-informação sobre cada documento (p.ex, identificador único,
@@ -14,14 +15,38 @@ título, ano, autor, localização), permitindo também um conjunto de interroga
 conteúdo dos documentos
 */
 
+void readClient (ClientRequest buf, char* docPath, int cacheSize) {
+    int fifoWrite = open (buf.fifoPath, O_WRONLY);
+    if (fifoWrite == -1) {
+        perror ("Failed to open client FIFO");
+    }
+
+    char** commands = decodeInfo(buf);
+    char* reply = processCommands(commands, docPath, cacheSize);
+
+    if (reply) write (fifoWrite, reply, strlen(reply) + 1);
+
+    close (fifoWrite);
+    for (int i = 0; i < 8 && commands[i][0] != '\0'; i++) {
+        free(commands[i]);
+    }
+    free(commands);
+    if (!reply) _exit (1);
+    else _exit(0);
+}
+
     // $ ./dserver document_folder cache_size
 int main(int argc, char **argv) {
     if (argc != 3) {
         perror ("Wrong number of arguments");
         exit (EXIT_FAILURE);
     }
+    int cacheNumber = convertToNumber (argv[2]);
+    if (cacheNumber == -1) exit (EXIT_FAILURE);;
+
 
     printf ("creating server fifo\n");
+
     // create server FIFO (read only)
     createServerFifo ();
     printf ("waiting for client\n");
@@ -39,25 +64,8 @@ int main(int argc, char **argv) {
 
         printf ("client read\n");
         pid_t pid = fork();
-        if (pid == 0) {
-            int fifoWrite = open (buf.fifoPath, O_WRONLY);
-            if (fifoWrite == -1) {
-                perror ("Failed to open client FIFO");
-            }
+        if (pid == 0) readClient(buf, argv[1], cacheNumber);
 
-            char** commands = decodeInfo(buf);
-            char* reply = processCommands(commands);
-
-            if (reply) write (fifoWrite, reply, strlen(reply) + 1);
-
-            close (fifoWrite);
-            for (int i = 0; i < 8 && commands[i][0] != '\0'; i++) {
-                free(commands[i]);
-            }
-            free(commands);
-            if (!reply) _exit (1);
-            else _exit(0);
-        }
         wait(&status);
         if (WEXITSTATUS(status) == 1) {  
             printf("Shutting down server...\n");
