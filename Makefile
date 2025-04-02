@@ -22,10 +22,10 @@ folders:
 	@mkdir -p obj/client obj/server bin tmp
 
 bin/dserver: $(OBJ_SERVER) $(OBJ)
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(CC) $^ -o $@ $(LDFLAGS)
 
 bin/dclient: $(OBJ_CLIENT) $(OBJ)
-	$(CC) $(LDFLAGS) $^ -o $@
+	$(CC) $^ -o $@ $(LDFLAGS)
 
 obj/%.o: src/%.c | folders
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -41,7 +41,7 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
     strncpy(doc->path, fullPath, sizeof(doc->path));
     doc->year = year;
 
-    gboolean b = g_hash_table_insert (table, GINT_TO_POINTER (id), doc);
+    g_hash_table_insert (table, GINT_TO_POINTER (id), doc);
  
     char* message = malloc (50);
     if (!message) {
