@@ -1,7 +1,5 @@
-#include "protocol.h"
+#include <glib.h>
 
 void createServerFifo ();
 
-char** decodeInfo (ClientRequest cr);
-
-char* processCommands(char **commands, char* path, int cacheSize);
+char* processCommands(char **commands, char* path, int cacheSize, GHashTable*);

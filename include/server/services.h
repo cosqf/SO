@@ -1,7 +1,9 @@
+#include <glib.h>
+
 typedef struct doc Document;
 
-int addDoc (char* title, char* author, short year, char* fileName, char* pathDocs);
+char* addDoc (GHashTable* table, char* title, char* author, short year, char* fileName, char* pathDocs);
 
-char* consultDoc (int id);
+char* consultDoc (GHashTable* table, int id);
 
-int deleteDoc (int id);
+char* deleteDoc (GHashTable* table, int id);

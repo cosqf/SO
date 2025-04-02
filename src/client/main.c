@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
         unlink(pathFifo);
         return 1;
     }
+    freeClientRequest(cInfo);
 
     printf ("opening client pipe\n");
 
@@ -51,7 +52,6 @@ int main(int argc, char** argv) {
     int fifoRead = open (pathFifo, O_RDONLY);
     if (fifoRead == -1) {
         perror ("Client didn't open");
-        freeClientRequest(cInfo);
         close(fifoWrite);
         unlink(pathFifo);
         return 1;
@@ -61,15 +61,14 @@ int main(int argc, char** argv) {
     printf ("waiting for servers response\n");
  
     // read server's resonse
-    char buf[BUFSIZ];
-    int bytesRead = read (fifoRead, buf, BUFSIZ);
+    char buf[MAX_RESPONSE_SIZE];
+    int bytesRead = read (fifoRead, buf, MAX_RESPONSE_SIZE);
     if (bytesRead<0) perror ("No bytes read from server");
 
     // write to user
     write (STDOUT_FILENO, buf, bytesRead);
 
     // cleanup
-    freeClientRequest(cInfo);
     close(fifoRead);
     close(fifoWrite);
     unlink(pathFifo);
