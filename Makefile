@@ -13,8 +13,6 @@ OBJ_SERVER := $(patsubst src/server/%.c,obj/server/%.o,$(SRC_SERVER))
 OBJ_CLIENT := $(patsubst src/client/%.c,obj/client/%.o,$(SRC_CLIENT))
 OBJ		   := $(patsubst src/%.c,obj/%.o,$(SRC))
 
-$(info OBJ: $(OBJ))
-
 all: folders dserver dclient
 
 dserver: bin/dserver
