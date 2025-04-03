@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-char** decodeInfo(ClientRequest cr) {
+char** decodeClientInfo(ClientRequest cr) {
     int argc = 0;
     
     for (int i = 0; i < 8 && cr.command[i][0] != '\0'; i++) {
@@ -30,4 +30,29 @@ char** decodeInfo(ClientRequest cr) {
     }
     commands[argc] = NULL; 
     return commands;
+}
+
+
+Message* clientToMessage (ClientRequest* cr) {
+    Message* msg = malloc (sizeof (Message));
+    if (!msg) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    msg->type = CLIENT;
+    msg->data.clientReq = *cr;
+    
+    return msg;
+}
+
+Message* childToMessage (ChildRequest* cr) {
+    Message* msg = malloc (sizeof (Message));
+    if (!msg) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    msg->type = CHILD;
+    msg->data.childReq = *cr;
+    
+    return msg;
 }

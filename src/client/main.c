@@ -32,20 +32,20 @@ int main(int argc, char** argv) {
         close(fifoWrite);
         return 1;
     }
+    Message* msg = clientToMessage (cInfo);
 
     printf ("talking to server\n");
 
     // send client info to server
-    int bytesWritten = write (fifoWrite, cInfo, sizeof (*cInfo));
+    int bytesWritten = write (fifoWrite, msg, sizeof (msg));
     if (bytesWritten < 0) {
         perror ("No bytes written to server");
+        free (msg);
         freeClientRequest(cInfo);
         close(fifoWrite);
         unlink(pathFifo);
         return 1;
     }
-    freeClientRequest(cInfo);
-
     printf ("opening client pipe\n");
 
     // open pipe to get server's response
@@ -56,8 +56,9 @@ int main(int argc, char** argv) {
         unlink(pathFifo);
         return 1;
     }
-    
-
+    free (msg);
+    freeClientRequest(cInfo);
+    close(fifoWrite);
     printf ("waiting for servers response\n");
  
     // read server's resonse
@@ -70,7 +71,6 @@ int main(int argc, char** argv) {
 
     // cleanup
     close(fifoRead);
-    close(fifoWrite);
     unlink(pathFifo);
 
     return 0;

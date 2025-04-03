@@ -11,6 +11,8 @@
 #include <utils.h>
 #include <client/client.h>
 #include <server/server.h>
+#include <server/services.h>
+
 /*
 O programa servidor é responsável por registar meta-informação sobre cada documento (p.ex, identificador único,
 título, ano, autor, localização), permitindo também um conjunto de interrogações relativamente a esta meta-informação e ao
@@ -23,7 +25,7 @@ void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* ta
         perror ("Failed to open client FIFO");
     }
 
-    char** commands = decodeInfo(buf);
+    char** commands = decodeClientInfo(buf);
     char* reply = processCommands(commands, docPath, cacheSize, table);
     
     if (strcmp (reply, "exit") == 0) {
@@ -66,21 +68,39 @@ int main(int argc, char **argv) {
     }
     GHashTable* docTable = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, free);
 
-    ClientRequest buf;
+    Message buf;
     int status;
     while (1) {
-        int bytesRead = read (fifoRead, &buf, sizeof (ClientRequest));
+        int bytesRead = read (fifoRead, &buf, sizeof (Message));
         if (bytesRead <=0) continue;
 
-        printf ("client read\n");
-        pid_t pid = fork();
-        if (pid == 0) readClient(buf, argv[1], cacheNumber, docTable);
+        if (buf.type == CLIENT) {
+            pid_t pid = fork();
+            if (pid == 0) readClient(buf.data.clientReq, argv[1], cacheNumber, docTable);
 
-        wait(&status);
-        if (WEXITSTATUS(status) == 1) {  
-            printf("Shutting down server...\n");
-            break;
+            wait(&status);
+            if (WEXITSTATUS(status) == 1) {  
+                printf("Shutting down server...\n");
+                break;
+            }
         }
+        else {
+            Document* doc = buf.data.childReq.doc;
+            int id = getDocumentId(doc);
+
+            switch (buf.data.childReq.cmd) {
+            case ADD:
+                g_hash_table_insert (docTable, GINT_TO_POINTER (id), doc);
+                break;
+            
+            case DELETE:
+                g_hash_table_remove (docTable, &id);
+                break;
+            
+            default: break;
+            }
+        }
+        
     }
     close (fifoRead);
     unlink (SERVER_PATH);
