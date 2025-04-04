@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
     printf ("talking to server\n");
 
     // send client info to server
-    int bytesWritten = write (fifoWrite, msg, sizeof (msg));
+    int bytesWritten = write (fifoWrite, msg, sizeof (Message));
     if (bytesWritten < 0) {
         perror ("No bytes written to server");
         free (msg);

@@ -20,6 +20,10 @@ conteúdo dos documentos
 */
 
 void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* table) {
+    //printf ("Path: %s%s\n", docPath, buf.fifoPath);
+    for (int i = 0; i<8; i++) {
+        printf ("%d. %s\n", i, buf.command[i]);
+    }
     int fifoWrite = open (buf.fifoPath, O_WRONLY);
     if (fifoWrite == -1) {
         perror ("Failed to open client FIFO");
@@ -73,7 +77,8 @@ int main(int argc, char **argv) {
     while (1) {
         int bytesRead = read (fifoRead, &buf, sizeof (Message));
         if (bytesRead <=0) continue;
-
+        printf ("read %d\n", buf.type);
+        
         if (buf.type == CLIENT) {
             pid_t pid = fork();
             if (pid == 0) readClient(buf.data.clientReq, argv[1], cacheNumber, docTable);
@@ -85,15 +90,17 @@ int main(int argc, char **argv) {
             }
         }
         else {
-            Document* doc = buf.data.childReq.doc;
-            int id = getDocumentId(doc);
+            Document doc = buf.data.childReq.doc;
+            int id = getDocumentId(&doc);
 
             switch (buf.data.childReq.cmd) {
             case ADD:
-                g_hash_table_insert (docTable, GINT_TO_POINTER (id), doc);
+            printf ("adding doc %d\n", id);
+                g_hash_table_insert (docTable, GINT_TO_POINTER (id), &doc);
                 break;
             
             case DELETE:
+                printf ("removing doc %d\n", id);
                 g_hash_table_remove (docTable, &id);
                 break;
             

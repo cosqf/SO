@@ -9,14 +9,6 @@
 
 #include <server/services.h>
 
-typedef struct doc {
-    int id;
-    char title[200];
-    char authors[200];
-    char path[64];
-    short year;
-} Document;
-
 int getDocumentId (Document* doc) {
     return doc->id;
 }
@@ -28,7 +20,7 @@ ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
         return NULL;
     }
     req->cmd = cmd;
-    req->doc = doc;
+    req->doc = *doc;
     return req;
 }
 
@@ -49,7 +41,7 @@ void sendMessageToServer (enum ChildCommand, Document* doc) {
         free (doc);
         free (cr);
     }   
-    write (fifoWrite, msg, sizeof(msg));
+    write (fifoWrite, msg, sizeof(Message));
     close (fifoWrite);
     free (cr);
     free (msg);
@@ -81,8 +73,6 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
 
     sendMessageToServer (ADD, doc);
 
-    // MAKE PROPER FUNCTION FOR SENDING MESSAGES ^^
-
     char* message = malloc (50);
     if (!message) {
         perror ("Malloc error");
@@ -91,7 +81,6 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
     }
 
     snprintf (message, 50, "Document indexed -- id: %d\n", id);
-    printf ("message sent: %s\n", message);
     return message;
 }
 
@@ -108,14 +97,12 @@ char* consultDoc (GHashTable* table, int id) {
 
     if (!doc) {
         snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
-        printf ("message sent: %s\n", message);
         return message;
     }
     
     snprintf(message, MAX_RESPONSE_SIZE, 
         "--DOCUMENT INFORMATION--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nFile name: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
-    printf ("message sent: %s\n", message);
     return message;  
 }
 
@@ -129,15 +116,13 @@ char* deleteDoc (GHashTable* table, int id){
     Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
     if (doc) {
 
-        // CREATE MESSAGE AND SEND TO SERVER TO DELETE THE DOCUMENT
+        sendMessageToServer (DELETE, NULL);
 
         snprintf (message, 35, "DOCUMENT %d REMOVED\n", id);
-        printf ("message sent: %s\n", message);
         return message;
     }
     else {
         snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
-        printf ("message sent: %s\n", message);
         return message;
     }
     return 0;
@@ -159,7 +144,6 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
     Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
     if (!doc) {
         snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
-        printf ("message sent: %s\n", message);
         return message;
     }
 

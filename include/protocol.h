@@ -4,7 +4,13 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-typedef struct doc Document;
+typedef struct doc {
+    int id;
+    char title[200];
+    char authors[200];
+    char path[64];
+    short year;
+} Document;
 
 enum MessageType {
     CLIENT, 
@@ -23,7 +29,7 @@ typedef struct clientrequest {
 
 typedef struct childrequest {
     enum ChildCommand cmd;
-    Document* doc;
+    Document doc;
 } ChildRequest;
 
 typedef struct message {
