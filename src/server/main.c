@@ -20,8 +20,7 @@ conteúdo dos documentos
 */
 
 void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* table) {
-    //printf ("Path: %s%s\n", docPath, buf.fifoPath);
-    for (int i = 0; i<8; i++) {
+    for (int i = 0; i<5; i++) {
         printf ("%d. %s\n", i, buf.command[i]);
     }
     int fifoWrite = open (buf.fifoPath, O_WRONLY);
@@ -34,7 +33,7 @@ void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* ta
     
     if (strcmp (reply, "exit") == 0) {
         close (fifoWrite);
-        for (int i = 0; i < 8 && commands[i][0] != '\0'; i++) {
+        for (int i = 0; i < 5 && commands[i][0] != '\0'; i++) {
             free(commands[i]);
         }
         free(commands);
@@ -43,7 +42,7 @@ void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* ta
     write (fifoWrite, reply, strlen(reply));
 
     close (fifoWrite);
-    for (int i = 0; i < 8 && commands[i][0] != '\0'; i++) {
+    for (int i = 0; i < 5 && commands[i][0] != '\0'; i++) {
         free(commands[i]);
     }
     free(commands);
@@ -90,18 +89,23 @@ int main(int argc, char **argv) {
             }
         }
         else {
-            Document doc = buf.data.childReq.doc;
-            int id = getDocumentId(&doc);
+            Document* doc = malloc(sizeof(Document));
+            if (!doc) {
+                perror("Malloc error");
+                continue;
+            }
+            *doc = buf.data.childReq.doc;
+            int id = getDocumentId(doc);
 
             switch (buf.data.childReq.cmd) {
             case ADD:
-            printf ("adding doc %d\n", id);
-                g_hash_table_insert (docTable, GINT_TO_POINTER (id), &doc);
+                printf ("adding doc %d\n", id);
+                g_hash_table_insert (docTable, GINT_TO_POINTER (id), doc);
                 break;
             
             case DELETE:
                 printf ("removing doc %d\n", id);
-                g_hash_table_remove (docTable, &id);
+                g_hash_table_remove (docTable, GINT_TO_POINTER (id));
                 break;
             
             default: break;

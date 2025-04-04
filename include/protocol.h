@@ -24,7 +24,7 @@ enum ChildCommand {
 
 typedef struct clientrequest {
     char fifoPath[256];  
-    char command[8][1024];  
+    char command[5][64];  
 } ClientRequest;
 
 typedef struct childrequest {

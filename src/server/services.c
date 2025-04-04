@@ -9,6 +9,11 @@
 
 #include <server/services.h>
 
+// void printDoc2(Document* doc) { // debug
+//     printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
+//            doc->id, doc->title, doc->authors, doc->path, doc->year);
+// }
+
 int getDocumentId (Document* doc) {
     return doc->id;
 }
@@ -19,32 +24,37 @@ ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
         perror ("Malloc error");
         return NULL;
     }
+    memset(req, 0, sizeof(ChildRequest)); // avoid using uninitialized memory
+
     req->cmd = cmd;
     req->doc = *doc;
     return req;
 }
 
-void sendMessageToServer (enum ChildCommand, Document* doc) {
-    ChildRequest* cr = convertChildInfo (ADD, doc);
+void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
+    ChildRequest* cr = convertChildInfo (cmd, doc);
     if (!cr) {
-        free (doc);
+        perror ("Error converting doc into a command in child");
+        return;
     }
+    
     Message* msg = childToMessage (cr);
     if (!msg) {
-        free (doc);
+        perror ("Error converting child request into message");
         free (cr);
+        return;
     }
 
     int fifoWrite = open (SERVER_PATH, O_WRONLY);
     if (fifoWrite == -1) {
         perror ("Server didn't open");
-        free (doc);
+        free (msg);
         free (cr);
     }   
     write (fifoWrite, msg, sizeof(Message));
+    free(msg);
     close (fifoWrite);
     free (cr);
-    free (msg);
 }
 
 // dclient -a "title" "authors" "year" "path"
@@ -64,21 +74,22 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
         perror("Malloc error");
         return NULL;
     }
+    memset(doc, 0, sizeof(Document)); // avoid using uninitialized memory
 
     doc->id = id;
     strncpy(doc->title, title, sizeof(doc->title));
     strncpy(doc->authors, author, sizeof(doc->authors));
     strncpy(doc->path, fullPath, sizeof(doc->path));
     doc->year = year;
-
+    
     sendMessageToServer (ADD, doc);
+    free (doc);
 
     char* message = malloc (50);
     if (!message) {
         perror ("Malloc error");
-        free (doc);
         return NULL;
-    }
+    }  
 
     snprintf (message, 50, "Document indexed -- id: %d\n", id);
     return message;
@@ -96,12 +107,14 @@ char* consultDoc (GHashTable* table, int id) {
     Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
 
     if (!doc) {
-        snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
+        snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
+    //printf ("\ndoc in services, id %d:", id);
+    //printDoc2 (doc);
     
     snprintf(message, MAX_RESPONSE_SIZE, 
-        "--DOCUMENT INFORMATION--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nFile name: %s\n", 
+        "--DOCUMENT INFORMATION--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
@@ -113,10 +126,11 @@ char* deleteDoc (GHashTable* table, int id){
         perror ("Malloc error");
         return NULL;
     }
+    printf ("looking up id %d\n", id);
     Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
     if (doc) {
-
-        sendMessageToServer (DELETE, NULL);
+        sendMessageToServer (DELETE, doc);
+        free (doc);
 
         snprintf (message, 35, "DOCUMENT %d REMOVED\n", id);
         return message;
@@ -177,3 +191,5 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
 
     return message;
 }
+
+// TODO: when adding a file, very if its already indexed (path) - needed?

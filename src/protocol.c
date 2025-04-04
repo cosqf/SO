@@ -6,7 +6,7 @@
 char** decodeClientInfo(ClientRequest cr) {
     int argc = 0;
     
-    for (int i = 0; i < 8 && cr.command[i][0] != '\0'; i++) {
+    for (int i = 0; i < 5 && cr.command[i][0] != '\0'; i++) {
         argc++;
     }
 
@@ -39,6 +39,7 @@ Message* clientToMessage (ClientRequest* cr) {
         perror ("Malloc error");
         return NULL;
     }
+    memset(msg, 0, sizeof(Message)); // avoid using uninitialized memory
     msg->type = CLIENT;
     msg->data.clientReq = *cr;
     
@@ -51,6 +52,7 @@ Message* childToMessage (ChildRequest* cr) {
         perror ("Malloc error");
         return NULL;
     }
+    memset(msg, 0, sizeof(Message)); // avoid using uninitialized memory
     msg->type = CHILD;
     msg->data.childReq = *cr;
     
