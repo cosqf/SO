@@ -29,7 +29,8 @@ ClientRequest* convertInfo (int argc, char** args, char path[]) {
     for (int i = 0; i < max_arg; i++) {
         snprintf(req->command[i], sizeof(req->command[i]), "%s", args[i + 1]);
     }
-    req->command[max_arg][0] = '\0';
+    for (int i = max_arg; i < 8; i++) req->command[i][0] = '\0';
+    
     return req;
 }
 

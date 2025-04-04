@@ -1,7 +1,17 @@
-typedef struct doc Document;
+#include <glib.h>
+#include <protocol.h>
 
-int addDoc (char* title, char* author, short year, char* fileName, char* pathDocs);
+#ifndef SERVICES_H
+#define SERVICES_H
 
-char* consultDoc (int id);
+int getDocumentId (Document* doc);
 
-int deleteDoc (int id);
+ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc);
+
+char* addDoc (GHashTable* table, char* title, char* author, short year, char* fileName, char* pathDocs);
+
+char* consultDoc (GHashTable* table, int id);
+
+char* deleteDoc (GHashTable* table, int id);
+
+#endif
