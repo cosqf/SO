@@ -9,10 +9,10 @@
 
 #include <server/services.h>
 
-// void printDoc2(Document* doc) { // debug
-//     printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
-//            doc->id, doc->title, doc->authors, doc->path, doc->year);
-// }
+void printDoc2(Document* doc) { // debug
+    printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
+           doc->id, doc->title, doc->authors, doc->path, doc->year);
+}
 
 int getDocumentId (Document* doc) {
     return doc->id;
@@ -27,7 +27,7 @@ ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
     memset(req, 0, sizeof(ChildRequest)); // avoid using uninitialized memory
 
     req->cmd = cmd;
-    req->doc = *doc;
+    if (doc) req->doc = *doc;
     return req;
 }
 
@@ -44,7 +44,6 @@ void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
         free (cr);
         return;
     }
-
     int fifoWrite = open (SERVER_PATH, O_WRONLY);
     if (fifoWrite == -1) {
         perror ("Server didn't open");
@@ -55,6 +54,19 @@ void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
     free(msg);
     close (fifoWrite);
     free (cr);
+}
+
+// dclient -f
+char* closeServer () {
+    char* message = malloc (20);
+    if (!message) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    
+    snprintf (message, 20, "Closed server!\n");
+    sendMessageToServer (EXIT, NULL);
+    return message;
 }
 
 // dclient -a "title" "authors" "year" "path"
@@ -110,11 +122,9 @@ char* consultDoc (GHashTable* table, int id) {
         snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
-    //printf ("\ndoc in services, id %d:", id);
-    //printDoc2 (doc);
-    
+
     snprintf(message, MAX_RESPONSE_SIZE, 
-        "--DOCUMENT INFORMATION--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
+        "\n--Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
@@ -132,11 +142,11 @@ char* deleteDoc (GHashTable* table, int id){
         sendMessageToServer (DELETE, doc);
         free (doc);
 
-        snprintf (message, 35, "DOCUMENT %d REMOVED\n", id);
+        snprintf (message, 35, "Document %d removed\n", id);
         return message;
     }
     else {
-        snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
+        snprintf (message, 35, "Document %d isn\'t indexed\n", id);
         return message;
     }
     return 0;
@@ -147,8 +157,39 @@ dclient -l "key" "keyword"
 Em detalhe, deve ser possível (opção -l) devolver o número de linhas de um dado documento (i.e., identificado pela sua key) que
 contêm uma dada palavra-chave (keyword).
 */
-char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
-    char* message = malloc(MAX_RESPONSE_SIZE);
+
+int checkDocForKeyword (Document* doc, char* keyword) {
+    int fildes[2];
+    pipe(fildes);
+    pid_t pid = fork();
+    int number = 0;
+    if (pid == 0) {  
+        close(fildes[0]);  // close read end
+        dup2(fildes[1], STDOUT_FILENO);  // redirect stdout to pipe
+        close(fildes[1]);
+
+        execlp("grep", "grep", "-c", keyword, doc->path, NULL);
+
+        perror("execlp failed");
+        exit(1);
+    } else {  
+        close(fildes[1]);  // close write end
+        char buffer[100];
+        int bytesRead = read(fildes[0], buffer, sizeof(buffer) - 1);
+        if (bytesRead <= 0) perror ("Error in grep");
+        else {
+            buffer[bytesRead-1] = '\0';
+            number = convertToNumber (buffer);
+        }
+        close(fildes[0]);
+        wait(NULL);
+    }
+    return number;
+}
+
+char* lookupKeyword (GHashTable* table, int id, char* keyword) {
+    int maxSizeMessage = 60;
+    char* message = malloc(maxSizeMessage);
     if (!message) {
         perror ("Malloc error");
         return NULL;
@@ -161,35 +202,48 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
         return message;
     }
 
-    char fullPath[100]= {0};
-    snprintf (fullPath, 100, "%s%s", pathDocs, doc->path);
-
-    int fildes[2];
-    pipe(fildes);
-    pid_t pid = fork();
-
-    if (pid == 0) {  
-        close(fildes[0]);  // close read end
-        dup2(fildes[1], STDOUT_FILENO);  // redirect stdout to pipe
-        close(fildes[1]);
-
-        execlp("grep", "grep", "-c", keyword, fullPath, NULL);
-        perror("execlp failed");
-        exit(1);
-    } else {  
-        close(fildes[1]);  // close write end
-        char buffer[100];
-        int bytesRead = read(fildes[0], buffer, sizeof(buffer) - 1);
-        if (bytesRead <= 0) perror ("Error in grep");
-        else {
-            buffer[bytesRead] = '\0';
-            snprintf (message, MAX_RESPONSE_SIZE, "\'%s\' APPEARS IN FILE NUMBER %d %s TIMES\n", keyword, id, buffer);
-        }
-        close(fildes[0]);
-        wait(NULL);
-    }
+    int count = checkDocForKeyword (doc, keyword);
+    if (count != 0) snprintf (message, maxSizeMessage, "Keyword \'%s\' appears in the file %d times\n", keyword, count);
+    else snprintf (message, maxSizeMessage, "Keyword \'%s\' doesn\'t appear in the file\n", keyword);
 
     return message;
 }
 
-// TODO: when adding a file, very if its already indexed (path) - needed?
+/*
+dclient -s "keyword"
+Ainda, deve ser possível (opção -s) devolver uma lista de identificadores de documentos que contêm uma dada palavra-chave
+(keyword).
+*/
+
+char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
+    char* message = malloc(MAX_RESPONSE_SIZE);
+    if (!message) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    snprintf (message, MAX_RESPONSE_SIZE, "-- The documents with the keyword are:\n");
+
+    int any = 0;
+    printf ("iterating hash table\n");
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init (&iter, table);
+    while (g_hash_table_iter_next (&iter, &key, &value)) {
+        Document* doc = (Document*) value;
+        int count = checkDocForKeyword (doc, keyword);
+        if (count != 0) {
+            any = 1;
+            char* addMessage = malloc (10);
+            if (!addMessage) {
+                perror ("Malloc error");
+                return NULL;
+            }
+            snprintf (addMessage, 10, "%d\n", doc->id);
+            strcat (message, addMessage);
+            free (addMessage);
+        }
+    }
+    printf ("finished iterating\n");
+    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "--NO DOCUMENTS HAVE THE KEYWORD \'%s\'--\n", keyword);
+    return message;
+}
