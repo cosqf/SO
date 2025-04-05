@@ -46,6 +46,11 @@ char* processCommands(char **commands, char* pathDocs, int cacheSize, GHashTable
         if (id == -1) return NULL;
         return deleteDoc (table, id);
     } 
+    else if (strcmp (commands[0], "-l") == 0) {
+        int id = convertToNumber (commands[1]);
+        if (id == -1) return NULL;
+        return lookupKeyword (table, id, commands[2]);
+    }
     
     else return "Yippee\n"; 
 }

@@ -9,10 +9,10 @@
 
 #include <server/services.h>
 
-// void printDoc2(Document* doc) { // debug
-//     printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
-//            doc->id, doc->title, doc->authors, doc->path, doc->year);
-// }
+void printDoc2(Document* doc) { // debug
+    printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
+           doc->id, doc->title, doc->authors, doc->path, doc->year);
+}
 
 int getDocumentId (Document* doc) {
     return doc->id;
@@ -147,7 +147,7 @@ dclient -l "key" "keyword"
 Em detalhe, deve ser possível (opção -l) devolver o número de linhas de um dado documento (i.e., identificado pela sua key) que
 contêm uma dada palavra-chave (keyword).
 */
-char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
+char* lookupKeyword (GHashTable* table, int id, char* keyword) {
     char* message = malloc(MAX_RESPONSE_SIZE);
     if (!message) {
         perror ("Malloc error");
@@ -161,9 +161,6 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
         return message;
     }
 
-    char fullPath[100]= {0};
-    snprintf (fullPath, 100, "%s%s", pathDocs, doc->path);
-
     int fildes[2];
     pipe(fildes);
     pid_t pid = fork();
@@ -173,7 +170,8 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
         dup2(fildes[1], STDOUT_FILENO);  // redirect stdout to pipe
         close(fildes[1]);
 
-        execlp("grep", "grep", "-c", keyword, fullPath, NULL);
+        execlp("grep", "grep", "-c", keyword, doc->path, NULL);
+
         perror("execlp failed");
         exit(1);
     } else {  
@@ -182,8 +180,8 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
         int bytesRead = read(fildes[0], buffer, sizeof(buffer) - 1);
         if (bytesRead <= 0) perror ("Error in grep");
         else {
-            buffer[bytesRead] = '\0';
-            snprintf (message, MAX_RESPONSE_SIZE, "\'%s\' APPEARS IN FILE NUMBER %d %s TIMES\n", keyword, id, buffer);
+            buffer[bytesRead-1] = '\0';
+            snprintf (message, MAX_RESPONSE_SIZE, "\'%s\' APPEARS IN THE FILE %s TIMES\n", keyword, buffer);
         }
         close(fildes[0]);
         wait(NULL);
@@ -191,5 +189,3 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword, char* pathDocs) {
 
     return message;
 }
-
-// TODO: when adding a file, very if its already indexed (path) - needed?
