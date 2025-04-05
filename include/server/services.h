@@ -16,4 +16,6 @@ char* deleteDoc (GHashTable* table, int id);
 
 char* lookupKeyword (GHashTable* table, int id, char* keyword);
 
+char* lookupDocsWithKeyword (GHashTable* table, char* keyword);
+
 #endif

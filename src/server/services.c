@@ -110,9 +110,7 @@ char* consultDoc (GHashTable* table, int id) {
         snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
-    //printf ("\ndoc in services, id %d:", id);
-    //printDoc2 (doc);
-    
+
     snprintf(message, MAX_RESPONSE_SIZE, 
         "--DOCUMENT INFORMATION--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
@@ -147,24 +145,12 @@ dclient -l "key" "keyword"
 Em detalhe, deve ser possível (opção -l) devolver o número de linhas de um dado documento (i.e., identificado pela sua key) que
 contêm uma dada palavra-chave (keyword).
 */
-char* lookupKeyword (GHashTable* table, int id, char* keyword) {
-    char* message = malloc(MAX_RESPONSE_SIZE);
-    if (!message) {
-        perror ("Malloc error");
-        return NULL;
-    }
-    // gets doc from hash table
-    printf ("looking up id %d\n", id);
-    Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
-    if (!doc) {
-        snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
-        return message;
-    }
 
+int checkDocForKeyword (Document* doc, char* keyword) {
     int fildes[2];
     pipe(fildes);
     pid_t pid = fork();
-
+    int number = 0;
     if (pid == 0) {  
         close(fildes[0]);  // close read end
         dup2(fildes[1], STDOUT_FILENO);  // redirect stdout to pipe
@@ -181,11 +167,71 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword) {
         if (bytesRead <= 0) perror ("Error in grep");
         else {
             buffer[bytesRead-1] = '\0';
-            snprintf (message, MAX_RESPONSE_SIZE, "\'%s\' APPEARS IN THE FILE %s TIMES\n", keyword, buffer);
+            number = convertToNumber (buffer);
         }
         close(fildes[0]);
         wait(NULL);
     }
+    return number;
+}
 
+char* lookupKeyword (GHashTable* table, int id, char* keyword) {
+    int maxSizeMessage = 60;
+    char* message = malloc(maxSizeMessage);
+    if (!message) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    // gets doc from hash table
+    printf ("looking up id %d\n", id);
+    Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
+    if (!doc) {
+        snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
+        return message;
+    }
+
+    int count = checkDocForKeyword (doc, keyword);
+    if (count != 0) snprintf (message, maxSizeMessage, "KEYWORD \'%s\' APPEARS IN THE FILE %d TIMES\n", keyword, count);
+    else snprintf (message, maxSizeMessage, "KEYWORD \'%s\' DOESN\'T APPEAR IN THE FILE\n", keyword);
+
+    return message;
+}
+
+/*
+dclient -s "keyword"
+Ainda, deve ser possível (opção -s) devolver uma lista de identificadores de documentos que contêm uma dada palavra-chave
+(keyword).
+*/
+
+char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
+    char* message = malloc(MAX_RESPONSE_SIZE);
+    if (!message) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    snprintf (message, MAX_RESPONSE_SIZE, "THE DOCUMENTS WITH THE KEYWORD ARE:\n");
+
+    int any = 0;
+    printf ("iterating hash table\n");
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init (&iter, table);
+    while (g_hash_table_iter_next (&iter, &key, &value)) {
+        Document* doc = (Document*) value;
+        int count = checkDocForKeyword (doc, keyword);
+        if (count != 0) {
+            any = 1;
+            char* addMessage = malloc (10);
+            if (!addMessage) {
+                perror ("Malloc error");
+                return NULL;
+            }
+            snprintf (addMessage, 10, "%d\n", doc->id);
+            strcat (message, addMessage);
+            free (addMessage);
+        }
+    }
+    printf ("finished iterating\n");
+    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "NO DOCUMENTS HAVE THE KEYWORD \'%s\'\n", keyword);
     return message;
 }

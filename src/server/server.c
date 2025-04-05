@@ -51,6 +51,9 @@ char* processCommands(char **commands, char* pathDocs, int cacheSize, GHashTable
         if (id == -1) return NULL;
         return lookupKeyword (table, id, commands[2]);
     }
+    else if (strcmp (commands[0], "-s") == 0) {
+        return lookupDocsWithKeyword (table, commands[1]);
+    }
     
     else return "Yippee\n"; 
 }
