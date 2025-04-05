@@ -21,15 +21,8 @@ char* processCommands(char **commands, char* pathDocs, int cacheSize, GHashTable
     if (!commands || !commands[0]) return "Invalid command";
     if (strcmp(commands[0], "-f") == 0) {
         printf ("closing\n");
-        g_hash_table_destroy (table);
-        return "exit";
+        return closeServer();
     }
-    else if (strcmp(commands[0], "-t") == 0) { // for debugging
-        printf ("testing server\n");
-        static char result[MAX_RESPONSE_SIZE]; 
-        snprintf(result, sizeof(result), "test %s\n", commands[1]); 
-        return result;
-        }
     else if (strcmp(commands[0], "-a") == 0) {
         printf ("adding doc\n");
         int year = convertToNumber (commands[3]);

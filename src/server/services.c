@@ -27,7 +27,7 @@ ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
     memset(req, 0, sizeof(ChildRequest)); // avoid using uninitialized memory
 
     req->cmd = cmd;
-    req->doc = *doc;
+    if (doc) req->doc = *doc;
     return req;
 }
 
@@ -44,7 +44,6 @@ void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
         free (cr);
         return;
     }
-
     int fifoWrite = open (SERVER_PATH, O_WRONLY);
     if (fifoWrite == -1) {
         perror ("Server didn't open");
@@ -55,6 +54,19 @@ void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
     free(msg);
     close (fifoWrite);
     free (cr);
+}
+
+// dclient -f
+char* closeServer () {
+    char* message = malloc (20);
+    if (!message) {
+        perror ("Malloc error");
+        return NULL;
+    }
+    
+    snprintf (message, 20, "Closed server!\n");
+    sendMessageToServer (EXIT, NULL);
+    return message;
 }
 
 // dclient -a "title" "authors" "year" "path"
@@ -112,7 +124,7 @@ char* consultDoc (GHashTable* table, int id) {
     }
 
     snprintf(message, MAX_RESPONSE_SIZE, 
-        "--DOCUMENT INFORMATION--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
+        "\n--Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
@@ -130,11 +142,11 @@ char* deleteDoc (GHashTable* table, int id){
         sendMessageToServer (DELETE, doc);
         free (doc);
 
-        snprintf (message, 35, "DOCUMENT %d REMOVED\n", id);
+        snprintf (message, 35, "Document %d removed\n", id);
         return message;
     }
     else {
-        snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
+        snprintf (message, 35, "Document %d isn\'t indexed\n", id);
         return message;
     }
     return 0;
@@ -191,8 +203,8 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword) {
     }
 
     int count = checkDocForKeyword (doc, keyword);
-    if (count != 0) snprintf (message, maxSizeMessage, "KEYWORD \'%s\' APPEARS IN THE FILE %d TIMES\n", keyword, count);
-    else snprintf (message, maxSizeMessage, "KEYWORD \'%s\' DOESN\'T APPEAR IN THE FILE\n", keyword);
+    if (count != 0) snprintf (message, maxSizeMessage, "Keyword \'%s\' appears in the file %d times\n", keyword, count);
+    else snprintf (message, maxSizeMessage, "Keyword \'%s\' doesn\'t appear in the file\n", keyword);
 
     return message;
 }
@@ -209,7 +221,7 @@ char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
         perror ("Malloc error");
         return NULL;
     }
-    snprintf (message, MAX_RESPONSE_SIZE, "THE DOCUMENTS WITH THE KEYWORD ARE:\n");
+    snprintf (message, MAX_RESPONSE_SIZE, "-- The documents with the keyword are:\n");
 
     int any = 0;
     printf ("iterating hash table\n");
@@ -232,6 +244,6 @@ char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
         }
     }
     printf ("finished iterating\n");
-    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "NO DOCUMENTS HAVE THE KEYWORD \'%s\'\n", keyword);
+    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "--NO DOCUMENTS HAVE THE KEYWORD \'%s\'--\n", keyword);
     return message;
 }

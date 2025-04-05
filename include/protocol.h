@@ -20,6 +20,7 @@ enum MessageType {
 enum ChildCommand {
     ADD,
     DELETE,
+    EXIT
 };
 
 typedef struct clientrequest {

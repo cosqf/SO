@@ -8,6 +8,8 @@ int getDocumentId (Document* doc);
 
 ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc);
 
+char* closeServer ();
+
 char* addDoc (GHashTable* table, char* title, char* author, short year, char* fileName, char* pathDocs);
 
 char* consultDoc (GHashTable* table, int id);
