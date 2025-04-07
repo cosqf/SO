@@ -4,8 +4,6 @@
 #ifndef SERVICES_H
 #define SERVICES_H
 
-int getDocumentId (Document* doc);
-
 ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc);
 
 char* closeServer ();

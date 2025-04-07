@@ -14,9 +14,6 @@ void printDoc2(Document* doc) { // debug
            doc->id, doc->title, doc->authors, doc->path, doc->year);
 }
 
-int getDocumentId (Document* doc) {
-    return doc->id;
-}
 
 ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
     ChildRequest* req = malloc (sizeof (ChildRequest));
@@ -230,17 +227,26 @@ char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
     g_hash_table_iter_init (&iter, table);
     while (g_hash_table_iter_next (&iter, &key, &value)) {
         Document* doc = (Document*) value;
-        int count = checkDocForKeyword (doc, keyword);
-        if (count != 0) {
+        int status;
+        pid_t pid = fork();
+        if (pid == 0) {
+            execlp ("grep", "grep", "-q", keyword, doc->path, NULL);
+            exit (1);
+        }
+        else {
+            wait(&status);
             any = 1;
-            char* addMessage = malloc (10);
-            if (!addMessage) {
-                perror ("Malloc error");
-                return NULL;
+            if (WEXITSTATUS(status) != 1) {
+                any = 1;
+                char* addMessage = malloc (10);
+                if (!addMessage) {
+                    perror ("Malloc error");
+                    return NULL;
+                }
+                snprintf (addMessage, 10, "%d\n", doc->id);
+                strcat (message, addMessage);
+                free (addMessage);
             }
-            snprintf (addMessage, 10, "%d\n", doc->id);
-            strcat (message, addMessage);
-            free (addMessage);
         }
     }
     printf ("finished iterating\n");

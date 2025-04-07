@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
     printf ("waiting for client\n");
     int fifoRead = open (SERVER_PATH, O_RDONLY);
     if (fifoRead == -1) {
-        perror ("Server didn't open");
+        perror ("server didn't open");
 		return 1;
     }
     GHashTable* docTable = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, free);
