@@ -165,7 +165,7 @@ int checkDocForKeyword (Document* doc, char* keyword) {
         dup2(fildes[1], STDOUT_FILENO);  // redirect stdout to pipe
         close(fildes[1]);
 
-        execlp("grep", "grep", "-c", keyword, doc->path, NULL);
+        execlp("grep", "grep", "-c", "-w", keyword, doc->path, NULL);
 
         perror("execlp failed");
         exit(1);
@@ -230,7 +230,7 @@ char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
         int status;
         pid_t pid = fork();
         if (pid == 0) {
-            execlp ("grep", "grep", "-q", keyword, doc->path, NULL);
+            execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL);
             exit (1);
         }
         else {
