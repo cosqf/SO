@@ -41,6 +41,7 @@ typedef struct message {
     } data;
 } Message;
 
+int getDocumentId (Document* doc);
 char** decodeClientInfo (ClientRequest cr);
 Message* clientToMessage (ClientRequest* cr);
 Message* childToMessage (ChildRequest* cr);

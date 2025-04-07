@@ -2,6 +2,11 @@
 #include <protocol.h>
 #include <stdlib.h>
 #include <string.h>
+#include <protocol.h>
+
+int getDocumentId (Document* doc) {
+    return doc->id;
+}
 
 char** decodeClientInfo(ClientRequest cr) {
     int argc = 0;
