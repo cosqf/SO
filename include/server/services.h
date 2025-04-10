@@ -18,4 +18,6 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword);
 
 char* lookupDocsWithKeyword (GHashTable* table, char* keyword);
 
+void sendMessageToServer (enum ChildCommand cmd, Document* doc);
+
 #endif

@@ -12,14 +12,13 @@
 #include <client/client.h>
 #include <server/server.h>
 #include <server/services.h>
-#define MAX_CHILDREN 1024
 /*
 O programa servidor é responsável por registar meta-informação sobre cada documento (p.ex, identificador único,
 título, ano, autor, localização), permitindo também um conjunto de interrogações relativamente a esta meta-informação e ao
 conteúdo dos documentos
 */
 
-void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* table) {
+void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* table) { // run by child 
     for (int i = 0; i<5; i++) {
         printf ("%d. %s\n", i, buf.command[i]);
     }
@@ -32,14 +31,60 @@ void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* ta
     char* reply = processCommands(commands, docPath, cacheSize, table);
     
     write (fifoWrite, reply, strlen(reply));
-
     close (fifoWrite);
-    for (int i = 0; i < 5 && commands[i][0] != '\0'; i++) {
+    for (int i = 0; i < buf.noCommand; i++) {
         free(commands[i]);
     }
     free(commands);
-    
+
+    notifyChildExit ();
+
     _exit(0);
+}
+
+int readChild (GHashTable* docTable, ChildRequest childReq) { // read by parent
+    switch (childReq.cmd) {
+        case ADD:
+            Document* docA = malloc(sizeof(Document));
+            if (!docA) {
+                perror("Malloc error");
+                return 0;
+            }
+            *docA = childReq.doc;
+            int id = getDocumentId(docA);
+
+            printf ("adding doc %d\n", id);
+            g_hash_table_insert (docTable, GINT_TO_POINTER (id), docA);
+            break;
+        
+        case DELETE:
+            Document* docD = malloc(sizeof(Document));
+            if (!docD) {
+                perror("Malloc error");
+                return 0;
+            }
+            *docD = childReq.doc;
+            int idD = getDocumentId(docD);
+
+            printf ("removing doc %d\n", idD);
+            g_hash_table_remove (docTable, GINT_TO_POINTER (idD));
+            free (docD);
+            break;
+
+        case EXIT:
+            printf("shutting down server...\n");
+            return 1;
+
+        case CHILD_EXIT: {
+            pid_t pid = childReq.doc.id;
+            int wstatus;
+            waitpid(pid, &wstatus, 0); 
+            break;
+        }
+        default:
+            break;
+    }
+    return 0;
 }
 
     // $ ./dserver document_folder cache_size
@@ -65,63 +110,21 @@ int main(int argc, char **argv) {
 
     Message buf;
     int keepGoing = 1;
-    pid_t childPIDs[MAX_CHILDREN];
-    int childCount = 0;
     while (keepGoing) {
         int bytesRead = read (fifoRead, &buf, sizeof (Message));
         if (bytesRead <=0) continue;
         printf ("read %d\n", buf.type);
         
         if (buf.type == CLIENT) {
-            if (childCount > MAX_CHILDREN) {
-                perror ("reached max children count!");
-                break;
-            }
             pid_t pid = fork();
             if (pid == 0) readClient(buf.data.clientReq, argv[1], cacheNumber, docTable);
-            childPIDs[childCount++] = pid;
         }
         else {
-            Document* doc = malloc(sizeof(Document));
-            if (!doc) {
-                perror("Malloc error");
-                continue;
-            }
-
-            switch (buf.data.childReq.cmd) {
-            case ADD:
-                *doc = buf.data.childReq.doc;
-                int id = getDocumentId(doc);
-
-                printf ("adding doc %d\n", id);
-                g_hash_table_insert (docTable, GINT_TO_POINTER (id), doc);
-                break;
-            
-            case DELETE:
-                *doc = buf.data.childReq.doc;
-                int idD = getDocumentId(doc);
-
-                printf ("removing doc %d\n", idD);
-                g_hash_table_remove (docTable, GINT_TO_POINTER (idD));
-                break;
-
-            case EXIT:
-                free (doc);
-                printf("shutting down server...\n");
-                keepGoing = 0;
-                break;
-            default:
-                break;
-            }
+            if (readChild (docTable,buf.data.childReq)) break;   
         }
     }
     // cleaning up
     g_hash_table_destroy (docTable);
-    printf("waiting for all child processes to exit...\n");
-    for (int i = 0; i < childCount; i++) {
-        int status;
-        waitpid(childPIDs[i], &status, 0);
-    }
     close (fifoRead);
     unlink (SERVER_PATH);
     return 0;

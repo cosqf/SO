@@ -5,6 +5,8 @@
 
 void createServerFifo ();
 
+void notifyChildExit();
+
 char* processCommands(char **commands, char* path, int cacheSize, GHashTable*);
 
 #endif

@@ -20,12 +20,14 @@ enum MessageType {
 enum ChildCommand {
     ADD,
     DELETE,
+    CHILD_EXIT,
     EXIT
 };
 
 typedef struct clientrequest {
     char fifoPath[256];  
-    char command[5][64];  
+    char command[5][64];
+    int noCommand;
 } ClientRequest;
 
 typedef struct childrequest {

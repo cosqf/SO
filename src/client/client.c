@@ -25,12 +25,12 @@ ClientRequest* convertInfo (int argc, char** args, char path[]) {
     req->fifoPath[sizeof(req->fifoPath) - 1] = '\0';
 
     // copy the args while excluding the first one (unnecessary)
-    int max_arg = (argc-1 < 8) ? (argc - 1) : 7;
-    for (int i = 0; i < max_arg; i++) {
+    int i;
+    int max_arg = (argc-1 < 5) ? (argc - 1) : 4;
+    for (i = 0; i < max_arg; i++) {
         snprintf(req->command[i], sizeof(req->command[i]), "%s", args[i + 1]);
     }
-    for (int i = max_arg; i < 8; i++) req->command[i][0] = '\0';
-    
+    req->noCommand = i-1;    
     return req;
 }
 

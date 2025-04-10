@@ -3,6 +3,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include <server/server.h>
 #include <server/services.h>
@@ -15,6 +17,21 @@ void createServerFifo () {
     perror("mkfifo failed");
     exit(EXIT_FAILURE);
     }
+}
+
+void notifyChildExit() {
+    Document doc = { .id = getpid() }; 
+    ChildRequest req = { .cmd = CHILD_EXIT, .doc = doc };
+
+    Message msg = { .type = CHILD, .data.childReq = req };
+
+    int fd = open(SERVER_PATH, O_WRONLY);
+    if (fd == -1) {
+        perror ("Failed to open server FIFO");
+        return;
+    }
+    write(fd, &msg, sizeof(msg));
+    close(fd);
 }
 
 char* processCommands(char **commands, char* pathDocs, int cacheSize, GHashTable* table) {
