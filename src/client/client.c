@@ -26,7 +26,7 @@ ClientRequest* convertInfo (int argc, char** args, char path[]) {
 
     // copy the args while excluding the first one (unnecessary)
     int i;
-    int max_arg = (argc-1 < 5) ? (argc - 1) : 4;
+    int max_arg = (argc-1 < 5) ? (argc - 1) : 5;
     for (i = 0; i < max_arg; i++) {
         snprintf(req->command[i], sizeof(req->command[i]), "%s", args[i + 1]);
     }

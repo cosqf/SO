@@ -28,7 +28,7 @@ void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* ta
     }
 
     char** commands = decodeClientInfo(buf);
-    char* reply = processCommands(commands, docPath, cacheSize, table);
+    char* reply = processCommands(commands, buf.noCommand, docPath, cacheSize, table);
     
     write (fifoWrite, reply, strlen(reply));
     close (fifoWrite);
@@ -55,8 +55,7 @@ int readChild (GHashTable* docTable, ChildRequest childReq) { // read by parent
 
             printf ("adding doc %d\n", id);
             g_hash_table_insert (docTable, GINT_TO_POINTER (id), docA);
-            break;
-        
+            return 0;        
         case DELETE:
             Document* docD = malloc(sizeof(Document));
             if (!docD) {
@@ -69,7 +68,7 @@ int readChild (GHashTable* docTable, ChildRequest childReq) { // read by parent
             printf ("removing doc %d\n", idD);
             g_hash_table_remove (docTable, GINT_TO_POINTER (idD));
             free (docD);
-            break;
+            return 0;
 
         case EXIT:
             printf("shutting down server...\n");
@@ -79,7 +78,7 @@ int readChild (GHashTable* docTable, ChildRequest childReq) { // read by parent
             pid_t pid = childReq.doc.id;
             int wstatus;
             waitpid(pid, &wstatus, 0); 
-            break;
+            return 0;
         }
         default:
             break;

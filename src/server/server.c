@@ -34,7 +34,7 @@ void notifyChildExit() {
     close(fd);
 }
 
-char* processCommands(char **commands, char* pathDocs, int cacheSize, GHashTable* table) {
+char* processCommands(char **commands, int noCommands, char* pathDocs, int cacheSize, GHashTable* table) {
     if (!commands || !commands[0]) return "Invalid command";
     if (strcmp(commands[0], "-f") == 0) {
         printf ("closing\n");
@@ -62,7 +62,10 @@ char* processCommands(char **commands, char* pathDocs, int cacheSize, GHashTable
         return lookupKeyword (table, id, commands[2]);
     }
     else if (strcmp (commands[0], "-s") == 0) {
-        return lookupDocsWithKeyword (table, commands[1]);
+        int nr;
+        if (noCommands == 2) nr = convertToNumber (commands[2]);
+        else nr = 1;
+        return lookupDocsWithKeyword (table, commands[1], nr);
     }
     
     else return "Yippee\n"; 
