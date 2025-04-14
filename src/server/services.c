@@ -61,7 +61,7 @@ char* closeServer () {
         return NULL;
     }
     
-    snprintf (message, 20, "Closed server!\n");
+    snprintf (message, 20, "-- Closed server!\n");
     sendMessageToServer (EXIT, NULL);
     return message;
 }
@@ -71,9 +71,17 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
     char fullPath[100]= {0};
     snprintf (fullPath, 100, "%s%s", pathDocs, fileName);
 
+    char* message = malloc (50);
+    if (!message) {
+        perror ("Malloc error");
+        return NULL;
+    }  
+
     if (open (fullPath, O_RDONLY) == -1) { 
         perror ("File doesn't exist");
-        return NULL;
+        perror (fullPath);
+        snprintf (message, 20, "-- FILE NOT FOUND\n");
+        return message;
     }
 
     int id = getpid();
@@ -81,6 +89,7 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
     Document* doc = malloc (sizeof (Document));
     if (!doc) {
         perror("Malloc error");
+        free (message);
         return NULL;
     }
     memset(doc, 0, sizeof(Document)); // avoid using uninitialized memory
@@ -94,13 +103,7 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
     sendMessageToServer (ADD, doc);
     free (doc);
 
-    char* message = malloc (50);
-    if (!message) {
-        perror ("Malloc error");
-        return NULL;
-    }  
-
-    snprintf (message, 50, "Document indexed -- id: %d\n", id);
+    snprintf (message, 50, "-- Document indexed -- id: %d\n", id);
     return message;
 }
 
@@ -116,12 +119,12 @@ char* consultDoc (GHashTable* table, int id) {
     Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
 
     if (!doc) {
-        snprintf (message, 35, "DOCUMENT %d ISN'T INDEXED\n", id);
+        snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
 
     snprintf(message, MAX_RESPONSE_SIZE, 
-        "\n--Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
+        "\n-- Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
@@ -139,11 +142,11 @@ char* deleteDoc (GHashTable* table, int id){
         sendMessageToServer (DELETE, doc);
         free (doc);
 
-        snprintf (message, 35, "Document %d removed\n", id);
+        snprintf (message, 35, "-- Document %d removed\n", id);
         return message;
     }
     else {
-        snprintf (message, 35, "Document %d isn\'t indexed\n", id);
+        snprintf (message, 35, "-- Document %d isn\'t indexed\n", id);
         return message;
     }
     return 0;
@@ -175,7 +178,7 @@ int checkDocForKeyword (Document* doc, char* keyword) {
         int bytesRead = read(fildes[0], buffer, sizeof(buffer) - 1);
         if (bytesRead <= 0) perror ("Error in grep");
         else {
-            buffer[bytesRead-1] = '\0';
+            buffer[bytesRead-1] = '\0'; //to overwrite the \n
             number = convertToNumber (buffer);
         }
         close(fildes[0]);
@@ -200,8 +203,8 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword) {
     }
 
     int count = checkDocForKeyword (doc, keyword);
-    if (count != 0) snprintf (message, maxSizeMessage, "Keyword \'%s\' appears in the file %d times\n", keyword, count);
-    else snprintf (message, maxSizeMessage, "Keyword \'%s\' doesn\'t appear in the file\n", keyword);
+    if (count != 0) snprintf (message, maxSizeMessage, "-- Keyword \'%s\' appears in the file %d times\n", keyword, count);
+    else snprintf (message, maxSizeMessage, "-- Keyword \'%s\' doesn\'t appear in the file\n", keyword);
 
     return message;
 }
@@ -230,26 +233,20 @@ char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
         int status;
         pid_t pid = fork();
         if (pid == 0) {
-            execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL);
+            execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL); // -q -> quiet, no output
             exit (1);
         }
         else {
             wait(&status);
-            any = 1;
             if (WEXITSTATUS(status) != 1) {
                 any = 1;
-                char* addMessage = malloc (10);
-                if (!addMessage) {
-                    perror ("Malloc error");
-                    return NULL;
-                }
-                snprintf (addMessage, 10, "%d\n", doc->id);
-                strcat (message, addMessage);
-                free (addMessage);
+                char addMessage[10];
+                snprintf(addMessage, sizeof(addMessage), "%d\n", doc->id);
+                strcat(message, addMessage);
             }
         }
     }
     printf ("finished iterating\n");
-    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "--NO DOCUMENTS HAVE THE KEYWORD \'%s\'--\n", keyword);
+    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "-- NO DOCUMENTS HAVE THE KEYWORD \'%s\'\n", keyword);
     return message;
 }
