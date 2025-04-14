@@ -1,5 +1,5 @@
 #define SERVER_PATH "tmp/fifoServer"
-#define MAX_RESPONSE_SIZE 1000
+#define MAX_RESPONSE_SIZE 2000
 
 #ifndef PROTOCOL_H
 #define PROTOCOL_H

@@ -158,7 +158,7 @@ Em detalhe, deve ser possível (opção -l) devolver o número de linhas de um d
 contêm uma dada palavra-chave (keyword).
 */
 
-int checkDocForKeyword (Document* doc, char* keyword) {
+int checkDocForKeywordCount (Document* doc, char* keyword) {
     int fildes[2];
     pipe(fildes);
     pid_t pid = fork();
@@ -202,7 +202,7 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword) {
         return message;
     }
 
-    int count = checkDocForKeyword (doc, keyword);
+    int count = checkDocForKeywordCount (doc, keyword);
     if (count != 0) snprintf (message, maxSizeMessage, "-- Keyword \'%s\' appears in the file %d times\n", keyword, count);
     else snprintf (message, maxSizeMessage, "-- Keyword \'%s\' doesn\'t appear in the file\n", keyword);
 
@@ -213,40 +213,81 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword) {
 dclient -s "keyword"
 Ainda, deve ser possível (opção -s) devolver uma lista de identificadores de documentos que contêm uma dada palavra-chave
 (keyword).
+
+Pesquisa concorrente. A operação de pesquisa por documentos que contêm uma dada palavra-chave (opção -s) deve poder ser
+efetuada concorrentemente por vários processos. Ao suportar esta operação avançada, a mesma passa a receber um argumento
+extra, nomeadamente o número máximo de processos a executar simultaneamente.
+dclient -s "keyword" "nr_processes"
 */
 
-char* lookupDocsWithKeyword (GHashTable* table, char* keyword) {
+int checkDocForKeyword (Document* doc, char* keyword, int fildes[]){
+    int status, any = 0;
+    pid_t pid = fork();
+    if (pid == 0) {
+        execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL); // -q -> quiet, no output
+        exit (1);
+    }
+    else {
+        wait(&status);
+        if (WEXITSTATUS(status) != 1) {
+            any = 1;
+            char addMessage[10];
+            snprintf(addMessage, sizeof(addMessage), "%d\n", doc->id);
+            printf ("writing \'%s\' to pipe\n", addMessage);
+            write (fildes[1], addMessage, sizeof (addMessage));
+        }
+    }
+    return any;
+}
+
+
+char* lookupDocsWithKeyword (GHashTable* table, char* keyword, int nrProcesses) {
     char* message = malloc(MAX_RESPONSE_SIZE);
     if (!message) {
         perror ("Malloc error");
         return NULL;
     }
-    snprintf (message, MAX_RESPONSE_SIZE, "-- The documents with the keyword are:\n");
+    snprintf (message, MAX_RESPONSE_SIZE, "-- The documents with the keyword are:\n"); 
 
-    int any = 0;
-    printf ("iterating hash table\n");
-    GHashTableIter iter;
-    gpointer key, value;
-    g_hash_table_iter_init (&iter, table);
-    while (g_hash_table_iter_next (&iter, &key, &value)) {
-        Document* doc = (Document*) value;
-        int status;
+    int tableSize = g_hash_table_size (table);
+    void** docs = gettingValuesOfHashTable (table);
+
+    nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
+    int chunkSize = (tableSize + nrProcesses - 1) / nrProcesses;
+
+    int status;
+    int fildes[2];
+    pipe (fildes);
+    for (int i = 0; i < nrProcesses; i++) {
         pid_t pid = fork();
+        int any = 0;
         if (pid == 0) {
-            execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL); // -q -> quiet, no output
-            exit (1);
-        }
-        else {
-            wait(&status);
-            if (WEXITSTATUS(status) != 1) {
-                any = 1;
-                char addMessage[10];
-                snprintf(addMessage, sizeof(addMessage), "%d\n", doc->id);
-                strcat(message, addMessage);
+            int start = i * chunkSize;
+            int end = (start + chunkSize > tableSize) ? tableSize : start + chunkSize;
+
+            for (int j = start; j < end; ++j) {
+                Document* doc = (Document*) docs[j];
+                int result = checkDocForKeyword(doc, keyword, fildes);
+                if (!any && result) any = 1; 
             }
+            printf ("%d exiting\n",getpid());
+            exit(any);
         }
     }
+    close (fildes[1]);
+    char addMessage[10];
+    int bytesRead;
+    while ((bytesRead = read (fildes[0], addMessage, sizeof (addMessage))) > 0) {
+        strcat (message, addMessage);
+    }
+    int any = 0;
+    for (int i = 0; i<nrProcesses; i++){
+        wait(&status);
+        if (WEXITSTATUS (status) == 1) any = 1;
+    } 
+    
+    free (docs);
     printf ("finished iterating\n");
-    if (!any) snprintf (message, MAX_RESPONSE_SIZE, "-- NO DOCUMENTS HAVE THE KEYWORD \'%s\'\n", keyword);
+    if (!any) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
     return message;
 }

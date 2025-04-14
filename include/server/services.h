@@ -16,7 +16,7 @@ char* deleteDoc (GHashTable* table, int id);
 
 char* lookupKeyword (GHashTable* table, int id, char* keyword);
 
-char* lookupDocsWithKeyword (GHashTable* table, char* keyword);
+char* lookupDocsWithKeyword (GHashTable* table, char* keyword, int nrProcesses);
 
 void sendMessageToServer (enum ChildCommand cmd, Document* doc);
 
