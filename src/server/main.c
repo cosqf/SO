@@ -30,8 +30,11 @@ void readClient (ClientRequest buf, char* docPath, int cacheSize, GHashTable* ta
     char** commands = decodeClientInfo(buf);
     char* reply = processCommands(commands, buf.noCommand, docPath, cacheSize, table);
     
+    int replySize = strlen(reply);
+    write (fifoWrite, &replySize, sizeof (replySize));
     write (fifoWrite, reply, strlen(reply));
     close (fifoWrite);
+
     for (int i = 0; i < buf.noCommand; i++) {
         free(commands[i]);
     }
@@ -112,8 +115,7 @@ int main(int argc, char **argv) {
     while (keepGoing) {
         int bytesRead = read (fifoRead, &buf, sizeof (Message));
         if (bytesRead <=0) continue;
-        printf ("read %d\n", buf.type);
-        
+   
         if (buf.type == CLIENT) {
             pid_t pid = fork();
             if (pid == 0) readClient(buf.data.clientReq, argv[1], cacheNumber, docTable);

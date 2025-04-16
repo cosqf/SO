@@ -109,7 +109,7 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
 
 //dclient -c "key"
 char* consultDoc (GHashTable* table, int id) {
-    char* message = malloc(MAX_RESPONSE_SIZE);
+    char* message = malloc(550);
     if (!message) {
         perror ("Malloc error");
         return NULL;
@@ -123,7 +123,7 @@ char* consultDoc (GHashTable* table, int id) {
         return message;
     }
 
-    snprintf(message, MAX_RESPONSE_SIZE, 
+    snprintf(message, 550, 
         "\n-- Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
@@ -171,7 +171,7 @@ int checkDocForKeywordCount (Document* doc, char* keyword) {
         execlp("grep", "grep", "-c", "-w", keyword, doc->path, NULL);
 
         perror("execlp failed");
-        exit(1);
+        _exit(1);
     } else {  
         close(fildes[1]);  // close write end
         char buffer[100];
@@ -225,39 +225,21 @@ int checkDocForKeyword (Document* doc, char* keyword, int fildes[]){
     pid_t pid = fork();
     if (pid == 0) {
         execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL); // -q -> quiet, no output
-        exit (1);
+        _exit (1);
     }
     else {
         wait(&status);
         if (WEXITSTATUS(status) != 1) {
             any = 1;
-            char addMessage[10];
-            snprintf(addMessage, sizeof(addMessage), "%d\n", doc->id);
-            printf ("writing \'%s\' to pipe\n", addMessage);
-            write (fildes[1], addMessage, sizeof (addMessage));
+            int id = doc->id;
+            write (fildes[1], &id, sizeof (id));
         }
     }
     return any;
 }
 
-
-char* lookupDocsWithKeyword (GHashTable* table, char* keyword, int nrProcesses) {
-    char* message = malloc(MAX_RESPONSE_SIZE);
-    if (!message) {
-        perror ("Malloc error");
-        return NULL;
-    }
-    snprintf (message, MAX_RESPONSE_SIZE, "-- The documents with the keyword are:\n"); 
-
-    int tableSize = g_hash_table_size (table);
-    void** docs = gettingValuesOfHashTable (table);
-
-    nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
+void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword, Document** docs) {
     int chunkSize = (tableSize + nrProcesses - 1) / nrProcesses;
-
-    int status;
-    int fildes[2];
-    pipe (fildes);
     for (int i = 0; i < nrProcesses; i++) {
         pid_t pid = fork();
         int any = 0;
@@ -266,28 +248,76 @@ char* lookupDocsWithKeyword (GHashTable* table, char* keyword, int nrProcesses) 
             int end = (start + chunkSize > tableSize) ? tableSize : start + chunkSize;
 
             for (int j = start; j < end; ++j) {
-                Document* doc = (Document*) docs[j];
+                Document* doc = docs[j];
                 int result = checkDocForKeyword(doc, keyword, fildes);
                 if (!any && result) any = 1; 
             }
-            printf ("%d exiting\n",getpid());
-            exit(any);
+            _exit(any);
         }
     }
     close (fildes[1]);
-    char addMessage[10];
-    int bytesRead;
-    while ((bytesRead = read (fildes[0], addMessage, sizeof (addMessage))) > 0) {
-        strcat (message, addMessage);
+}
+
+int readIds(int fildes[], int** allDocuments, int arraySize) {
+    int docId, i = 0;
+    while (read(fildes[0], &docId, sizeof(docId)) > 0) {
+        if (i >= arraySize) {
+            int* biggerArray = realloc(*allDocuments, arraySize * 2 * sizeof(int));
+            if (!biggerArray) {
+                perror("Realloc failed");
+                break;
+            }
+            *allDocuments = biggerArray;
+            arraySize *= 2;
+        }
+        (*allDocuments)[i++] = docId;
     }
+    return i;
+}
+
+
+char* lookupDocsWithKeyword (GHashTable* table, char* keyword, int nrProcesses) {
+    int tableSize = g_hash_table_size (table);
+    void** docs = gettingValuesOfHashTable (table);
+    nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
+
+    int status;
+    int fildes[2];
+    pipe (fildes);
+    setUpChildren (nrProcesses, tableSize, fildes, keyword, (Document**) docs);
+
+    printf ("receiving ids\n");    
+    int arrayInitialSize = 100;
+    int* allDocuments = calloc(arrayInitialSize, sizeof(int));
+    if (!allDocuments) {
+        perror("calloc");
+        return NULL;
+    }
+    int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
+    close(fildes[0]);
+
+    printf ("catching children\n");
     int any = 0;
     for (int i = 0; i<nrProcesses; i++){
         wait(&status);
         if (WEXITSTATUS (status) == 1) any = 1;
     } 
-    
     free (docs);
-    printf ("finished iterating\n");
     if (!any) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+
+    int estimatedLength = idCount * 7; // in digits, max 6 digits + /n
+    char* message = malloc(estimatedLength + 50);
+    if (!message) {
+        perror ("Malloc error");
+        free (allDocuments);
+        return NULL;
+        }
+    int msgUsed = snprintf(message, 50, "-- The documents with the keyword are:\n");
+    for (int j = 0; j < idCount; j++) {
+        msgUsed += sprintf(message + msgUsed, "%d\n", allDocuments[j]);
+    }
+    message[msgUsed] = '\0';
+    free (allDocuments);
+    printf ("finished iterating\n");
     return message;
 }
