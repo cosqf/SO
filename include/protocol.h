@@ -1,5 +1,4 @@
 #define SERVER_PATH "tmp/fifoServer"
-#define MAX_RESPONSE_SIZE 2000
 
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
@@ -20,6 +19,7 @@ enum MessageType {
 enum ChildCommand {
     ADD,
     DELETE,
+    LOOKUP,
     CHILD_EXIT,
     EXIT
 };
@@ -43,7 +43,6 @@ typedef struct message {
     } data;
 } Message;
 
-int getDocumentId (Document* doc);
 char** decodeClientInfo (ClientRequest cr);
 Message* clientToMessage (ClientRequest* cr);
 Message* childToMessage (ChildRequest* cr);

@@ -62,12 +62,15 @@ int main(int argc, char** argv) {
     printf ("waiting for servers response\n");
  
     // read server's resonse
-    char buf[MAX_RESPONSE_SIZE];
-    int bytesRead = read (fifoRead, buf, MAX_RESPONSE_SIZE);
-    if (bytesRead<0) perror ("No bytes read from server");
+    int sizeReponse; // first read the size of the message
+    read (fifoRead, &sizeReponse, sizeof (sizeReponse)); 
+
+    char buf[sizeReponse + 1];
+    read (fifoRead, buf, sizeReponse);
+    buf[sizeReponse] = '\0';
 
     // write to user
-    write (STDOUT_FILENO, buf, bytesRead);
+    write (STDOUT_FILENO, buf, sizeReponse);
 
     // cleanup
     close(fifoRead);
