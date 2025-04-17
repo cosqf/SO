@@ -6,8 +6,9 @@
 #include <utils.h>
 #include <glib.h>
 #include <sys/wait.h>
+#include <persistence.h>
 
-#include <server/services.h>
+#include <services.h>
 
 void printDoc2(Document* doc) { // debug
     printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
@@ -67,7 +68,7 @@ char* closeServer () {
 }
 
 // dclient -a "title" "authors" "year" "path"
-char* addDoc (GHashTable* table, char* title, char* author, short year, char* fileName, char* pathDocs) {
+char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs) {
     char fullPath[100]= {0};
     snprintf (fullPath, 100, "%s%s", pathDocs, fileName);
 
@@ -86,7 +87,7 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
 
     int id = getpid();
 
-    Document* doc = malloc (sizeof (Document));
+    Document* doc = malloc (sizeof (Document)); // use calloc instead?
     if (!doc) {
         perror("Malloc error");
         free (message);
@@ -108,7 +109,7 @@ char* addDoc (GHashTable* table, char* title, char* author, short year, char* fi
 }
 
 //dclient -c "key"
-char* consultDoc (GHashTable* table, int id) {
+char* consultDoc (DataStorage* ds, int id) {
     char* message = malloc(550);
     if (!message) {
         perror ("Malloc error");
@@ -116,12 +117,13 @@ char* consultDoc (GHashTable* table, int id) {
     }
 
     printf ("looking up id %d\n", id);
-    Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
+    Document* doc = lookupDoc (ds, id);
 
     if (!doc) {
         snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
+    sendMessageToServer (LOOKUP, doc);
 
     snprintf(message, 550, 
         "\n-- Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
@@ -130,26 +132,22 @@ char* consultDoc (GHashTable* table, int id) {
 }
 
 //dclient -d "key"
-char* deleteDoc (GHashTable* table, int id){
+char* deleteDoc (DataStorage* ds, int id){
     char* message = malloc(35);
     if (!message) {
         perror ("Malloc error");
         return NULL;
     }
     printf ("looking up id %d\n", id);
-    Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
+    Document* doc = lookupDoc (ds, id);
     if (doc) {
         sendMessageToServer (DELETE, doc);
         free (doc);
 
         snprintf (message, 35, "-- Document %d removed\n", id);
-        return message;
     }
-    else {
-        snprintf (message, 35, "-- Document %d isn\'t indexed\n", id);
-        return message;
-    }
-    return 0;
+    else snprintf (message, 35, "-- Document %d isn\'t indexed\n", id);
+    return message;
 }
 
 /*
@@ -187,7 +185,7 @@ int checkDocForKeywordCount (Document* doc, char* keyword) {
     return number;
 }
 
-char* lookupKeyword (GHashTable* table, int id, char* keyword) {
+char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
     int maxSizeMessage = 60;
     char* message = malloc(maxSizeMessage);
     if (!message) {
@@ -196,16 +194,16 @@ char* lookupKeyword (GHashTable* table, int id, char* keyword) {
     }
     // gets doc from hash table
     printf ("looking up id %d\n", id);
-    Document* doc = g_hash_table_lookup (table, GINT_TO_POINTER (id));
+    Document* doc = lookupDoc (ds, id);
     if (!doc) {
         snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
         return message;
     }
+    sendMessageToServer (LOOKUP, doc);
 
     int count = checkDocForKeywordCount (doc, keyword);
     if (count != 0) snprintf (message, maxSizeMessage, "-- Keyword \'%s\' appears in the file %d times\n", keyword, count);
     else snprintf (message, maxSizeMessage, "-- Keyword \'%s\' doesn\'t appear in the file\n", keyword);
-
     return message;
 }
 
@@ -238,7 +236,7 @@ int checkDocForKeyword (Document* doc, char* keyword, int fildes[]){
     return any;
 }
 
-void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword, Document** docs) {
+void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword, GPtrArray* docs) {
     int chunkSize = (tableSize + nrProcesses - 1) / nrProcesses;
     for (int i = 0; i < nrProcesses; i++) {
         pid_t pid = fork();
@@ -248,7 +246,7 @@ void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword,
             int end = (start + chunkSize > tableSize) ? tableSize : start + chunkSize;
 
             for (int j = start; j < end; ++j) {
-                Document* doc = docs[j];
+                Document* doc = docs->pdata[j];
                 int result = checkDocForKeyword(doc, keyword, fildes);
                 if (!any && result) any = 1; 
             }
@@ -276,15 +274,15 @@ int readIds(int fildes[], int** allDocuments, int arraySize) {
 }
 
 
-char* lookupDocsWithKeyword (GHashTable* table, char* keyword, int nrProcesses) {
-    int tableSize = g_hash_table_size (table);
-    void** docs = gettingValuesOfHashTable (table);
+char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
+    GPtrArray* docs = getAllDocuments(ds);
+    int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
 
     int status;
     int fildes[2];
     pipe (fildes);
-    setUpChildren (nrProcesses, tableSize, fildes, keyword, (Document**) docs);
+    setUpChildren (nrProcesses, tableSize, fildes, keyword, docs);
 
     printf ("receiving ids\n");    
     int arrayInitialSize = 100;

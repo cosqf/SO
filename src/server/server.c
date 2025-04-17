@@ -34,38 +34,37 @@ void notifyChildExit() {
     close(fd);
 }
 
-char* processCommands(char **commands, int noCommands, char* pathDocs, int cacheSize, GHashTable* table) {
+char* processCommands(char **commands, int noCommands, char* pathDocs, int cacheSize, DataStorage* ds) {
     if (!commands || !commands[0]) return "Invalid command";
     if (strcmp(commands[0], "-f") == 0) {
         printf ("closing\n");
         return closeServer();
     }
     else if (strcmp(commands[0], "-a") == 0) {
-        printf ("adding doc\n");
         int year = convertToNumber (commands[3]);
         if (year == -1) return NULL;
-        return addDoc (table, commands[1], commands[2], year, commands[4], pathDocs);
+        return addDoc (commands[1], commands[2], year, commands[4], pathDocs);
     }
     else if (strcmp(commands[0], "-c") == 0){
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
-        return consultDoc (table, id);
+        return consultDoc (ds, id);
     }
     else if (strcmp(commands[0], "-d") == 0){
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
-        return deleteDoc (table, id);
+        return deleteDoc (ds, id);
     } 
     else if (strcmp (commands[0], "-l") == 0) {
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
-        return lookupKeyword (table, id, commands[2]);
+        return lookupKeyword (ds, id, commands[2]);
     }
     else if (strcmp (commands[0], "-s") == 0) {
         int nr;
         if (noCommands == 2) nr = convertToNumber (commands[2]);
         else nr = 1;
-        return lookupDocsWithKeyword (table, commands[1], nr);
+        return lookupDocsWithKeyword (ds, commands[1], nr);
     }
     
     else return "Yippee\n"; 
