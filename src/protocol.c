@@ -36,12 +36,11 @@ char** decodeClientInfo(ClientRequest cr) {
 
 
 Message* clientToMessage (ClientRequest* cr) {
-    Message* msg = malloc (sizeof (Message));
+    Message* msg = calloc (1, sizeof (Message));
     if (!msg) {
         perror ("Malloc error");
         return NULL;
     }
-    memset(msg, 0, sizeof(Message)); // avoid using uninitialized memory
     msg->type = CLIENT;
     msg->data.clientReq = *cr;
     
@@ -49,12 +48,11 @@ Message* clientToMessage (ClientRequest* cr) {
 }
 
 Message* childToMessage (ChildRequest* cr) {
-    Message* msg = malloc (sizeof (Message));
+    Message* msg = calloc (1, sizeof (Message));
     if (!msg) {
         perror ("Malloc error");
         return NULL;
     }
-    memset(msg, 0, sizeof(Message)); // avoid using uninitialized memory
     msg->type = CHILD;
     msg->data.childReq = *cr;
     

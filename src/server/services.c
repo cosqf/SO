@@ -15,20 +15,33 @@ void printDoc2(Document* doc) { // debug
            doc->id, doc->title, doc->authors, doc->path, doc->year);
 }
 
-
+/**
+ * @brief Creates and initializes a ChildRequest structure with the specified command and document. */
 ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
-    ChildRequest* req = malloc (sizeof (ChildRequest));
-    if (!req) {
-        perror ("Malloc error");
+    if (!doc) {
+        perror ("Document is invalid");
         return NULL;
     }
-    memset(req, 0, sizeof(ChildRequest)); // avoid using uninitialized memory
+    ChildRequest* req = calloc (1, sizeof (ChildRequest));
+    if (!req) {
+        perror ("Calloc error");
+        return NULL;
+    }
 
     req->cmd = cmd;
-    if (doc) req->doc = *doc;
+    req->doc = *doc;
     return req;
 }
 
+/**
+ * @brief Sends a message from a child process to the server through the server FIFO.
+ *
+ * Converts a given command and a document into a ChildRequest, wraps it into a Message,
+ * and writes it to the server's FIFO. 
+ * 
+ * @param cmd The command type to send (e.g., ADD, DELETE, LOOKUP, etc.).
+ * @param doc A pointer to the Document related to the command.
+ */
 void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
     ChildRequest* cr = convertChildInfo (cmd, doc);
     if (!cr) {
@@ -54,7 +67,6 @@ void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
     free (cr);
 }
 
-// dclient -f
 char* closeServer () {
     char* message = malloc (20);
     if (!message) {
@@ -67,7 +79,6 @@ char* closeServer () {
     return message;
 }
 
-// dclient -a "title" "authors" "year" "path"
 char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs) {
     char fullPath[100]= {0};
     snprintf (fullPath, 100, "%s%s", pathDocs, fileName);
@@ -87,13 +98,12 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
 
     int id = getpid();
 
-    Document* doc = malloc (sizeof (Document)); // use calloc instead?
+    Document* doc = calloc (1, sizeof (Document)); 
     if (!doc) {
-        perror("Malloc error");
+        perror("Calloc error");
         free (message);
         return NULL;
     }
-    memset(doc, 0, sizeof(Document)); // avoid using uninitialized memory
 
     doc->id = id;
     strncpy(doc->title, title, sizeof(doc->title));
@@ -108,7 +118,6 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
     return message;
 }
 
-//dclient -c "key"
 char* consultDoc (DataStorage* ds, int id) {
     char* message = malloc(550);
     if (!message) {
@@ -118,7 +127,6 @@ char* consultDoc (DataStorage* ds, int id) {
 
     printf ("looking up id %d\n", id);
     Document* doc = lookupDoc (ds, id);
-
     if (!doc) {
         snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
@@ -131,7 +139,6 @@ char* consultDoc (DataStorage* ds, int id) {
     return message;  
 }
 
-//dclient -d "key"
 char* deleteDoc (DataStorage* ds, int id){
     char* message = malloc(35);
     if (!message) {
@@ -155,7 +162,18 @@ dclient -l "key" "keyword"
 Em detalhe, deve ser possível (opção -l) devolver o número de linhas de um dado documento (i.e., identificado pela sua key) que
 contêm uma dada palavra-chave (keyword).
 */
-
+/**
+ * @brief Counts the number of lines in a document that contain a specific keyword.
+ *
+ * This function uses a child process and pipes to execute the "grep -c -w" command,
+ * which counts how many lines in the file at doc->path contain the given keyword
+ * as a whole word.
+ *
+ * @param doc     Pointer to the Document whose file will be searched.
+ * @param keyword The keyword to search for in the document.
+ *
+ * @return The number of matching lines, or 0 if not found or on error.
+ */
 int checkDocForKeywordCount (Document* doc, char* keyword) {
     int fildes[2];
     pipe(fildes);
@@ -176,7 +194,7 @@ int checkDocForKeywordCount (Document* doc, char* keyword) {
         int bytesRead = read(fildes[0], buffer, sizeof(buffer) - 1);
         if (bytesRead <= 0) perror ("Error in grep");
         else {
-            buffer[bytesRead-1] = '\0'; //to overwrite the \n
+            buffer[bytesRead-1] = '\0'; // to overwrite the \n
             number = convertToNumber (buffer);
         }
         close(fildes[0]);
@@ -217,9 +235,20 @@ efetuada concorrentemente por vários processos. Ao suportar esta operação ava
 extra, nomeadamente o número máximo de processos a executar simultaneamente.
 dclient -s "keyword" "nr_processes"
 */
-
+/**
+ * @brief Checks if a document contains the given keyword using 'grep'.
+ *
+ * Uses 'grep -q -w' via execlp to perform a quiet search for the keyword.
+ * If the keyword is found, the document's ID is written to the given pipe.
+ *
+ * @param doc    Pointer to the Document to search.
+ * @param keyword Keyword to look for.
+ * @param fildes Pipe for sending the result to the parent.
+ *
+ * @return 1 if keyword is found, 0 otherwise.
+ */
 int checkDocForKeyword (Document* doc, char* keyword, int fildes[]){
-    int status, any = 0;
+    int status;
     pid_t pid = fork();
     if (pid == 0) {
         execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL); // -q -> quiet, no output
@@ -228,14 +257,26 @@ int checkDocForKeyword (Document* doc, char* keyword, int fildes[]){
     else {
         wait(&status);
         if (WEXITSTATUS(status) != 1) {
-            any = 1;
             int id = doc->id;
             write (fildes[1], &id, sizeof (id));
+            return 1;
         }
     }
-    return any;
+    return 0;
 }
 
+/**
+ * @brief Forks child processes to check subsets of documents in parallel.
+ *
+ * Each child checks a "chunk" of the documents array. If any document in
+ * its chunk matches the keyword, it writes the ID to a pipe.
+ *
+ * @param nrProcesses Number of child processes to create.
+ * @param tableSize   Total number of documents.
+ * @param fildes      Pipe to write found IDs to.
+ * @param keyword     Keyword to search for.
+ * @param docs        Array of document pointers.
+ */
 void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword, GPtrArray* docs) {
     int chunkSize = (tableSize + nrProcesses - 1) / nrProcesses;
     for (int i = 0; i < nrProcesses; i++) {
@@ -256,9 +297,20 @@ void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword,
     close (fildes[1]);
 }
 
+/**
+ * @brief Reads document IDs from the pipe sent by child processes.
+ *
+ * Dynamically reallocates array if more IDs are found than expected.
+ *
+ * @param fildes      Pipe file descriptors.
+ * @param allDocuments Output array of document IDs.
+ * @param arraySize   Initial allocated size.
+ *
+ * @return Number of document IDs read.
+ */
 int readIds(int fildes[], int** allDocuments, int arraySize) {
     int docId, i = 0;
-    while (read(fildes[0], &docId, sizeof(docId)) > 0) {
+    while (read (fildes[0], &docId, sizeof(docId)) > 0) {
         if (i >= arraySize) {
             int* biggerArray = realloc(*allDocuments, arraySize * 2 * sizeof(int));
             if (!biggerArray) {
@@ -282,6 +334,10 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     int status;
     int fildes[2];
     pipe (fildes);
+    if (pipe(fildes) == -1) {
+        perror("pipe");
+        return NULL;
+    }
     setUpChildren (nrProcesses, tableSize, fildes, keyword, docs);
 
     printf ("receiving ids\n");    
@@ -300,7 +356,8 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         wait(&status);
         if (WEXITSTATUS (status) == 1) any = 1;
     } 
-    free (docs);
+    g_ptr_array_free(docs, TRUE);
+
     if (!any) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
 
     int estimatedLength = idCount * 7; // in digits, max 6 digits + /n
@@ -312,7 +369,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         }
     int msgUsed = snprintf(message, 50, "-- The documents with the keyword are:\n");
     for (int j = 0; j < idCount; j++) {
-        msgUsed += sprintf(message + msgUsed, "%d\n", allDocuments[j]);
+        msgUsed += snprintf(message + msgUsed, estimatedLength + 50, "%d\n", allDocuments[j]);
     }
     message[msgUsed] = '\0';
     free (allDocuments);
