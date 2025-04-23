@@ -14,7 +14,6 @@ void createClientFifo (char path[], int number) {
     }
 }
 
-
 ClientRequest* convertInfo (int argc, char** args, char path[]) {
     ClientRequest* req = malloc (sizeof (ClientRequest));
     if (!req) {

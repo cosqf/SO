@@ -33,18 +33,14 @@
  * @param ds          A pointer to the DataStorage structure used to access cached/indexed documents.
  */
 void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
-    // printf ("\n");
-    // for (int i = 0; i<5; i++) {
-    //     printf ("%d. %s\n", i, buf.command[i]);
-    // }
     int fifoWrite = open (buf.fifoPath, O_WRONLY);
     if (fifoWrite == -1) {
         perror ("Failed to open client FIFO");
         notifyChildExit();
         _exit(1);
     }
-
-    char** commands = decodeClientInfo(buf);
+    int argc;
+    char** commands = decodeClientInfo(buf, &argc);
     char* reply = processCommands(commands, buf.noCommand, docPath, ds);
     if (reply) {
         int replySize = strlen(reply);
@@ -54,7 +50,7 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
     }
     close (fifoWrite);
 
-    for (int i = 0; i < buf.noCommand; i++) {
+    for (int i = 0; i < argc; i++) {
         free(commands[i]);
     }
     free(commands);
@@ -114,12 +110,11 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
             printf("shutting down server...\n");
             return 1;
 
-        case CHILD_EXIT: {
+        case CHILD_EXIT: 
             pid_t pid = childReq.doc.id;
             int wstatus;
             waitpid(pid, &wstatus, 0); 
             return 0;
-        }
         default:
             break;
     }

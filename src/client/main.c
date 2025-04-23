@@ -5,12 +5,30 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include "client/client.h"
-/*
-Os utilizadores devem utilizar um programa cliente para interagir com o serviço (i.e., com o programa servidor). Esta interação
-permitirá que os utilizadores adicionem ou removam a indexação de um documento no serviço, e que efetuem pesquisas (interro-
-gações) sobre os documentos indexados. De notar que o programa cliente apenas executa uma operação por invocação, ou seja,
-não é um programa interativo (i.e., que vai lendo várias operações a partir do stdin)
-*/
+
+/**
+ * @file main.c
+ * The users must use a client program to interact with the service (i.e. with the server program). This interaction will allow the 
+ * users to add or remove the indexation of a document and make searches about the indexed documents. It's worth noting that the
+ * client program only executes one operation per execution, which means it isn't an interactive program (i.e. that will 
+ * read many operations from stdin).
+ */
+
+/**
+ * @brief Main function of the client.
+ * 
+ * The client establishes communication with the document server via FIFOs. 
+ * It sends a request, waits for the response, and outputs it to the terminal.
+ *
+ * Usage:
+ *  - dclient -f                                   (close server)
+ *  - dclient -a "title" "authors" "year" "file"   (add document)
+ *  - dclient -c "key"                             (consult document by ID)
+ *  - dclient -d "key"                             (delete document)
+ *  - dclient -l "key" "keyword"                   (count keyword occurrences in a document)
+ *  - dclient -s "keyword" ["nr_procs"]            (search documents with keyword using concurrent search)
+ */
+int main(int argc, char** argv);
 
 int main(int argc, char** argv) {
     // open server FIFO (write only)
@@ -62,15 +80,20 @@ int main(int argc, char** argv) {
     printf ("waiting for servers response\n");
  
     // read server's resonse
-    int sizeReponse; // first read the size of the message
-    read (fifoRead, &sizeReponse, sizeof (sizeReponse)); 
+    int sizeResponse; // first read the size of the message
+    if (read(fifoRead, &sizeResponse, sizeof(sizeResponse)) <= 0) {
+        perror("Failed to read response size");
+        close(fifoRead);
+        unlink(pathFifo);
+        return 1;
+    }
 
-    char buf[sizeReponse + 1];
-    read (fifoRead, buf, sizeReponse);
-    buf[sizeReponse] = '\0';
+    char buf[sizeResponse + 1];
+    if (read (fifoRead, buf, sizeResponse) != sizeResponse) perror ("Read different size than announced");
+    buf[sizeResponse] = '\0';
 
     // write to user
-    write (STDOUT_FILENO, buf, sizeReponse);
+    write (STDOUT_FILENO, buf, sizeResponse);
 
     // cleanup
     close(fifoRead);

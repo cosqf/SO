@@ -4,7 +4,7 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-/** @brief Creates a fifo which the server will read.  */
+/** @brief Creates a FIFO which the server will read for messages.  */
 void createServerFifo ();
 
 /**
@@ -33,11 +33,9 @@ void notifyChildExit();
  * @param noCommands   The number of command arguments received.
  * @param pathDocs     The base path to document files.
  * @param ds           Pointer to the data storage structure managing cache and index.
+ * 
  * @return A dynamically allocated string containing the message to be sent to the Client.
- *
- * @note The returned string may need to be freed by the caller, depending on the implementation of the called functions.
  */
-
 char* processCommands(char **commands, int noCommands, char* path, DataStorage*);
 
 #endif

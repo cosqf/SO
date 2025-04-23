@@ -18,18 +18,13 @@ void printDoc2(Document* doc) { // debug
 /**
  * @brief Creates and initializes a ChildRequest structure with the specified command and document. */
 ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
-    if (!doc) {
-        perror ("Document is invalid");
-        return NULL;
-    }
     ChildRequest* req = calloc (1, sizeof (ChildRequest));
     if (!req) {
         perror ("Calloc error");
         return NULL;
     }
-
     req->cmd = cmd;
-    req->doc = *doc;
+    if (doc) req->doc = *doc;
     return req;
 }
 
@@ -151,9 +146,9 @@ char* deleteDoc (DataStorage* ds, int id){
         sendMessageToServer (DELETE, doc);
         free (doc);
 
-        snprintf (message, 35, "-- Document %d removed\n", id);
+        snprintf (message, 35, "-- DOCUMENT %d REMOVED\n", id);
     }
-    else snprintf (message, 35, "-- Document %d isn\'t indexed\n", id);
+    else snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
     return message;
 }
 

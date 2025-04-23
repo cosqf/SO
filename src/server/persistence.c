@@ -113,17 +113,13 @@ Document* lookupDoc (DataStorage* data, int id) {
     if (doc) {  // doc is in cache
         g_queue_remove (data->cache->LRUList, idp); // move to end of queue (most recently used) 
         g_queue_push_tail (data->cache->LRUList, idp);
-
-        char msg[] = "Cache hit\n";
-        write (STDOUT_FILENO, msg, sizeof (msg));
+        write (STDOUT_FILENO, "Cache hit\n", sizeof ("Cache hit\n"));
     }
     else {
-        char msg[] = "Cache miss\n";
-        write (STDOUT_FILENO, msg, sizeof (msg));
-
+        write (STDOUT_FILENO, "Cache miss\n", sizeof ("Cache miss\n"));
         if (!g_hash_table_contains (data->indexSet, idp)) return NULL; // doc isnt stored
 
-        Document* doc = readDocFromFile (id);
+        doc = readDocFromFile (id);
         if (!doc) return NULL;
 
         addDocToCache (data, doc);
@@ -165,7 +161,6 @@ void addDocToCache (DataStorage* data, Document* doc) {
     g_hash_table_insert(cache->table, idp, doc);
     g_queue_push_tail(cache->LRUList, idp);
 }
-
 
 void removeDocIndexing (DataStorage* data, int id) {
     gpointer idp = GUINT_TO_POINTER (id);
@@ -263,7 +258,9 @@ void destroyDataInMemory (DataStorage* data) {
                 g_hash_table_destroy (data->cache->table);
         }
         if (data->cache->LRUList) g_queue_free (data->cache->LRUList);
+        free(data->cache);
     }
     if (data->indexSet) g_hash_table_destroy (data->indexSet);
+    
     free (data);
 }

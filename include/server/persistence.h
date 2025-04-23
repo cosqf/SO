@@ -12,9 +12,9 @@
  * The document to be kicked (LRU) is stored at the head of the queue
  */
 typedef struct {
-    GHashTable* table; /**< Hashtable which holds the Documents, the IDs as keys and Document* as values */
-    GQueue* LRUList; /**< Queue that holds the IDs of the docs stored in cache in order by how recent they were used. */
-    int cacheSize; /**< The max number of Documents the cache holds. */
+    GHashTable* table; ///< Hashtable which holds the Documents, the IDs as keys and Document* as values 
+    GQueue* LRUList; ///< Queue that holds the IDs of the docs stored in cache in order by how recent they were used. 
+    int cacheSize; ///< The max number of Documents the cache holds. 
 } Cache;
 
 
@@ -23,7 +23,7 @@ typedef struct {
  */
 typedef struct dataStorage {
     Cache* cache;
-    GHashTable* indexSet; /**< Set (hashtable that only stores keys) that stores the Ids of Documents stored in disk */
+    GHashTable* indexSet; ///< Set (hashtable that only stores keys) that stores the Ids of Documents stored in disk 
 } DataStorage;
 
 
@@ -60,7 +60,7 @@ void addDocToCache (DataStorage* data, Document* doc);
 
 /**
  * @brief Removes a doc from storage, be it cache or the index set, if it exists. 
- * @note It does not remove the document from the file in disk and it must be cleaned later.
+ * @note It does not remove the document from the file in disk and it must be instead cleaned later.
  */
 void removeDocIndexing (DataStorage* data, int id);
 
@@ -79,7 +79,7 @@ GPtrArray* getAllDocuments(DataStorage* data);
 
 
 /**
- * Cleans all the (volatile) data related to Document storage */
+ * @brief Cleans all the (volatile) data related to Document storage */
 void destroyDataInMemory (DataStorage* data);
 
 #endif

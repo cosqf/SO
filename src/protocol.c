@@ -5,7 +5,7 @@
 #include <protocol.h>
 
 
-char** decodeClientInfo(ClientRequest cr) {
+char** decodeClientInfo(ClientRequest cr, int* argcOut) {
     int argc = 0;
     
     for (int i = 0; i < 5 && cr.command[i][0] != '\0'; i++) {
@@ -30,6 +30,7 @@ char** decodeClientInfo(ClientRequest cr) {
             return NULL;
         }
     }
+    *argcOut = argc;
     commands[argc] = NULL; 
     return commands;
 }
