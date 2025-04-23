@@ -5,7 +5,7 @@
 #include <protocol.h>
 
 
-char** decodeClientInfo(ClientRequest cr) {
+char** decodeClientInfo(ClientRequest cr, int* argcOut) {
     int argc = 0;
     
     for (int i = 0; i < 5 && cr.command[i][0] != '\0'; i++) {
@@ -30,18 +30,18 @@ char** decodeClientInfo(ClientRequest cr) {
             return NULL;
         }
     }
+    *argcOut = argc;
     commands[argc] = NULL; 
     return commands;
 }
 
 
 Message* clientToMessage (ClientRequest* cr) {
-    Message* msg = malloc (sizeof (Message));
+    Message* msg = calloc (1, sizeof (Message));
     if (!msg) {
         perror ("Malloc error");
         return NULL;
     }
-    memset(msg, 0, sizeof(Message)); // avoid using uninitialized memory
     msg->type = CLIENT;
     msg->data.clientReq = *cr;
     
@@ -49,12 +49,11 @@ Message* clientToMessage (ClientRequest* cr) {
 }
 
 Message* childToMessage (ChildRequest* cr) {
-    Message* msg = malloc (sizeof (Message));
+    Message* msg = calloc (1, sizeof (Message));
     if (!msg) {
         perror ("Malloc error");
         return NULL;
     }
-    memset(msg, 0, sizeof(Message)); // avoid using uninitialized memory
     msg->type = CHILD;
     msg->data.childReq = *cr;
     

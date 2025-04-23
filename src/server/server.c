@@ -34,10 +34,9 @@ void notifyChildExit() {
     close(fd);
 }
 
-char* processCommands(char **commands, int noCommands, char* pathDocs, int cacheSize, DataStorage* ds) {
+char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds) {
     if (!commands || !commands[0]) return "Invalid command";
     if (strcmp(commands[0], "-f") == 0) {
-        printf ("closing\n");
         return closeServer();
     }
     else if (strcmp(commands[0], "-a") == 0) {
@@ -66,6 +65,5 @@ char* processCommands(char **commands, int noCommands, char* pathDocs, int cache
         else nr = 1;
         return lookupDocsWithKeyword (ds, commands[1], nr);
     }
-    
-    else return "Yippee\n"; 
+    else return NULL; 
 }
