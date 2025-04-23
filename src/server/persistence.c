@@ -136,6 +136,7 @@ void addDocToCache (DataStorage* data, Document* doc) {
     if (g_hash_table_lookup(cache->table, idp)) {
         g_queue_remove(cache->LRUList, idp); // refresh LRU
         g_queue_push_tail(cache->LRUList, idp);
+        free (doc);
         return;
     }
 
@@ -154,7 +155,6 @@ void addDocToCache (DataStorage* data, Document* doc) {
         }
 
         g_hash_table_remove(cache->table, lruId);
-        printf("evicted doc %d to disk\n", GPOINTER_TO_INT(lruId));
     }
 
     // insert new doc
@@ -164,16 +164,10 @@ void addDocToCache (DataStorage* data, Document* doc) {
 
 void removeDocIndexing (DataStorage* data, int id) {
     gpointer idp = GUINT_TO_POINTER (id);
-    if (g_hash_table_remove(data->cache->table, idp)) {
-        g_queue_remove(data->cache->LRUList, idp);
-        printf("removed doc %d from cache\n", id);
-    }
-
-    if (g_hash_table_remove(data->indexSet, idp)) {
-        printf("removed doc %d from index\n", id);
-    } else {
-        printf("doc %d not found in index\n", id);
-    }
+    g_hash_table_remove(data->cache->table, idp);
+    g_queue_remove(data->cache->LRUList, idp);
+    
+    g_hash_table_remove(data->indexSet, idp);
 }
 
 

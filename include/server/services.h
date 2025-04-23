@@ -18,6 +18,7 @@ char* closeServer ();
  * @brief Adds a new document to the system.
  *
  * Constructs a Document using the provided metadata and file path, then sends an ADD request to the server.
+ * The ID used is calculate by the time and pid of the processor. 
  * It's triggered by "dclient -a "title" "authors" "year" "path""
  *
  * @param title     The title of the document.

@@ -10,11 +10,6 @@
 
 #include <services.h>
 
-void printDoc2(Document* doc) { // debug
-    printf("\nId: %d\nTitle: %s\nAuthors: %s\nPath: %s\nYear: %d\n", 
-           doc->id, doc->title, doc->authors, doc->path, doc->year);
-}
-
 /**
  * @brief Creates and initializes a ChildRequest structure with the specified command and document. */
 ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
@@ -91,7 +86,7 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
         return message;
     }
 
-    int id = getpid();
+    int id = (int) time(NULL) ^ getpid();
 
     Document* doc = calloc (1, sizeof (Document)); 
     if (!doc) {
@@ -114,13 +109,12 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
 }
 
 char* consultDoc (DataStorage* ds, int id) {
-    char* message = malloc(550);
+    char* message = malloc(600);
     if (!message) {
         perror ("Malloc error");
         return NULL;
     }
 
-    printf ("looking up id %d\n", id);
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
         snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
@@ -128,35 +122,29 @@ char* consultDoc (DataStorage* ds, int id) {
     }
     sendMessageToServer (LOOKUP, doc);
 
-    snprintf(message, 550, 
+    snprintf(message, 600, 
         "\n-- Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
 
 char* deleteDoc (DataStorage* ds, int id){
-    char* message = malloc(35);
+    char* message = malloc(45);
     if (!message) {
         perror ("Malloc error");
         return NULL;
     }
-    printf ("looking up id %d\n", id);
     Document* doc = lookupDoc (ds, id);
     if (doc) {
         sendMessageToServer (DELETE, doc);
         free (doc);
 
-        snprintf (message, 35, "-- DOCUMENT %d REMOVED\n", id);
+        snprintf (message, 45, "-- DOCUMENT %d REMOVED\n", id);
     }
-    else snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
+    else snprintf (message, 45, "-- DOCUMENT %d ISN'T INDEXED\n", id);
     return message;
 }
 
-/*
-dclient -l "key" "keyword"
-Em detalhe, deve ser possível (opção -l) devolver o número de linhas de um dado documento (i.e., identificado pela sua key) que
-contêm uma dada palavra-chave (keyword).
-*/
 /**
  * @brief Counts the number of lines in a document that contain a specific keyword.
  *
@@ -206,7 +194,6 @@ char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
         return NULL;
     }
     // gets doc from hash table
-    printf ("looking up id %d\n", id);
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
         snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
@@ -220,16 +207,6 @@ char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
     return message;
 }
 
-/*
-dclient -s "keyword"
-Ainda, deve ser possível (opção -s) devolver uma lista de identificadores de documentos que contêm uma dada palavra-chave
-(keyword).
-
-Pesquisa concorrente. A operação de pesquisa por documentos que contêm uma dada palavra-chave (opção -s) deve poder ser
-efetuada concorrentemente por vários processos. Ao suportar esta operação avançada, a mesma passa a receber um argumento
-extra, nomeadamente o número máximo de processos a executar simultaneamente.
-dclient -s "keyword" "nr_processes"
-*/
 /**
  * @brief Checks if a document contains the given keyword using 'grep'.
  *
@@ -335,7 +312,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     }
     setUpChildren (nrProcesses, tableSize, fildes, keyword, docs);
 
-    printf ("receiving ids\n");    
+    // receiving ids 
     int arrayInitialSize = 100;
     int* allDocuments = calloc(arrayInitialSize, sizeof(int));
     if (!allDocuments) {
@@ -345,7 +322,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
     close(fildes[0]);
 
-    printf ("catching children\n");
+    //catching children
     int any = 0;
     for (int i = 0; i<nrProcesses; i++){
         wait(&status);
@@ -368,6 +345,5 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     }
     message[msgUsed] = '\0';
     free (allDocuments);
-    printf ("finished iterating\n");
     return message;
 }

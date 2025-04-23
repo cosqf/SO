@@ -48,6 +48,12 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
         write (fifoWrite, reply, replySize);
         free (reply);
     }
+    else {
+        char reply[] = "ERROR\n";
+        int replySize = strlen (reply);
+        write (fifoWrite, &replySize, sizeof (replySize));
+        write (fifoWrite, reply, replySize);
+    }
     close (fifoWrite);
 
     for (int i = 0; i < argc; i++) {
@@ -81,14 +87,20 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
                 return 1;
             }
             *docA = childReq.doc;
-            int id = docA->id;
-            printf ("adding doc %d\n", id);
+            int idA = docA->id;
+            char msgA[30];
+            int lenA = snprintf(msgA, sizeof(msgA), "Adding doc %d\n", idA);
+            write(STDOUT_FILENO, msgA, lenA);
+
             addDocToCache (ds, docA);
             return 0;     
 
         case DELETE:
             int idD = childReq.doc.id;
-            printf ("removing doc %d\n", idD);
+            char msgD[30];
+            int lenD = snprintf(msgD, sizeof(msgD), "Removing doc %d\n", idD);
+            write(STDOUT_FILENO, msgD, lenD);
+
             removeDocIndexing (ds, idD);
             return 0;
 
@@ -101,13 +113,16 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
             *docL = childReq.doc;
 
             int idL = childReq.doc.id;
-            printf ("looking up %d\n", idL);
+            char msgL[30];
+            int lenL = snprintf(msgL, sizeof(msgL), "Looking up doc %d\n", idL);
+            write(STDOUT_FILENO, msgL, lenL);
+
             addDocToCache (ds, docL); // will update cache positions
             return 0;
 
         case EXIT:
             destroyDataInMemory (ds);
-            printf("shutting down server...\n");
+            write (STDOUT_FILENO, "Shutting down server...\n", sizeof ("Shutting down server...\n"));
             return 1;
 
         case CHILD_EXIT: 

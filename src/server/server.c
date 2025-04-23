@@ -37,7 +37,6 @@ void notifyChildExit() {
 char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds) {
     if (!commands || !commands[0]) return "Invalid command";
     if (strcmp(commands[0], "-f") == 0) {
-        printf ("closing\n");
         return closeServer();
     }
     else if (strcmp(commands[0], "-a") == 0) {
