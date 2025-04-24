@@ -68,7 +68,6 @@ char* closeServer () {
     int len = snprintf(msg, sizeof(msg), "Shutting down server...\n");
     write(STDOUT_FILENO, msg, len);
     
-    
     snprintf (message, 20, "-- Closed server!\n");
     sendMessageToServer (EXIT, NULL);
     return message;

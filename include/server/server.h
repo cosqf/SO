@@ -18,6 +18,36 @@ void createServerFifo ();
  */
 void notifyChildExit();
 
+
+/**
+ * @brief Handles a single client request in a child process.
+ *
+ * This function is executed by a forked child. It decodes the client's request,
+ * processes the command(s), and sends a response back through the provided FIFO path.
+ * It safely manages resources, ensures the response is written to the FIFO, and then
+ * terminates the child process cleanly.
+ *
+ * @param buf         The ClientRequest structure containing the command info and FIFO path.
+ * @param docPath     The path to the document directory.
+ * @param ds          A pointer to the DataStorage structure used to access cached/indexed documents.
+ */
+void readClient (ClientRequest buf, char* docPath, DataStorage* ds); 
+
+/**
+ * @brief Handles internal communication from child processes and manages server-side state.
+ *
+ * This function is called by the parent process to process requests sent from child processes.
+ * These requests can be adding, removing or looking up documents, catching a dead child or shutting down the server.
+ *
+ * @return int       Returns 0 for normal operations, or 1 in the following cases:
+ *                   - Memory allocation failure
+ *                   - When the server is instructed to shut down (EXIT command)
+ *
+ * @note This function should only be called by the parent process.
+ *       Child processes must not invoke this function.
+ */
+int readChild (DataStorage* ds, ChildRequest childReq);
+
 /**
  * @brief Processes client commands and performs the corresponding document operations.
  *

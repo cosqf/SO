@@ -34,6 +34,81 @@ void notifyChildExit() {
     close(fd);
 }
 
+void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
+    int fifoWrite = open (buf.fifoPath, O_WRONLY);
+    if (fifoWrite == -1) {
+        perror ("Failed to open client FIFO");
+        notifyChildExit();
+        _exit(1);
+    }
+    int argc;
+    char** commands = decodeClientInfo(buf, &argc);
+    char* reply = processCommands(commands, buf.noCommand, docPath, ds);
+    if (reply) {
+        int replySize = strlen(reply);
+        write (fifoWrite, &replySize, sizeof (replySize));
+        write (fifoWrite, reply, replySize);
+        free (reply);
+    }
+    else {
+        char reply[] = "ERROR\n";
+        int replySize = strlen (reply);
+        write (fifoWrite, &replySize, sizeof (replySize));
+        write (fifoWrite, reply, replySize);
+    }
+    close (fifoWrite);
+
+    for (int i = 0; i < argc; i++) {
+        free(commands[i]);
+    }
+    free(commands);
+
+    notifyChildExit ();
+    _exit(0);
+}
+
+int readChild (DataStorage* ds, ChildRequest childReq) { 
+    switch (childReq.cmd) {
+        case ADD:
+            Document* docA = malloc(sizeof(Document));
+            if (!docA) {
+                perror("Malloc error");
+                return 1;
+            }
+            *docA = childReq.doc;
+            addDocToCache (ds, docA);
+            return 0;     
+
+        case DELETE:
+            int idD = childReq.doc.id;
+            removeDocIndexing (ds, idD);
+            return 0;
+
+        case LOOKUP:
+            Document* docL = malloc (sizeof (Document));
+            if (!docL) {
+                perror ("Malloc error");
+                return 1;
+            }
+            *docL = childReq.doc;
+            addDocToCache (ds, docL); // will update cache positions
+            return 0;
+
+        case EXIT:
+            destroyDataInMemory (ds);
+            return 1;
+
+        case CHILD_EXIT: 
+            pid_t pid = childReq.doc.id;
+            int wstatus;
+            waitpid(pid, &wstatus, 0); 
+            return 0;
+        default:
+            break;
+    }
+    return 0;
+}
+
 char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds) {
     char invalidMsg[] = "Invalid command\n";
     if (!commands || !commands[0]) return invalidMsg;
