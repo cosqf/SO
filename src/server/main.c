@@ -87,20 +87,11 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
                 return 1;
             }
             *docA = childReq.doc;
-            int idA = docA->id;
-            char msgA[30];
-            int lenA = snprintf(msgA, sizeof(msgA), "Adding doc %d\n", idA);
-            write(STDOUT_FILENO, msgA, lenA);
-
             addDocToCache (ds, docA);
             return 0;     
 
         case DELETE:
             int idD = childReq.doc.id;
-            char msgD[30];
-            int lenD = snprintf(msgD, sizeof(msgD), "Removing doc %d\n", idD);
-            write(STDOUT_FILENO, msgD, lenD);
-
             removeDocIndexing (ds, idD);
             return 0;
 
@@ -111,18 +102,11 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
                 return 1;
             }
             *docL = childReq.doc;
-
-            int idL = childReq.doc.id;
-            char msgL[30];
-            int lenL = snprintf(msgL, sizeof(msgL), "Looking up doc %d\n", idL);
-            write(STDOUT_FILENO, msgL, lenL);
-
             addDocToCache (ds, docL); // will update cache positions
             return 0;
 
         case EXIT:
             destroyDataInMemory (ds);
-            write (STDOUT_FILENO, "Shutting down server...\n", sizeof ("Shutting down server...\n"));
             return 1;
 
         case CHILD_EXIT: 

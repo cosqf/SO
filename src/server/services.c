@@ -63,6 +63,11 @@ char* closeServer () {
         perror ("Malloc error");
         return NULL;
     }
+
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Shutting down server...\n");
+    write(STDOUT_FILENO, msg, len);
+    
     
     snprintf (message, 20, "-- Closed server!\n");
     sendMessageToServer (EXIT, NULL);
@@ -72,7 +77,7 @@ char* closeServer () {
 char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs) {
     char fullPath[100]= {0};
     snprintf (fullPath, 100, "%s%s", pathDocs, fileName);
-
+    
     char* message = malloc (50);
     if (!message) {
         perror ("Malloc error");
@@ -87,6 +92,10 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
     }
 
     int id = (int) time(NULL) ^ getpid();
+
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Adding doc %d\n", id);
+    write(STDOUT_FILENO, msg, len);
 
     Document* doc = calloc (1, sizeof (Document)); 
     if (!doc) {
@@ -114,7 +123,10 @@ char* consultDoc (DataStorage* ds, int id) {
         perror ("Malloc error");
         return NULL;
     }
-
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Looking up doc %d\n", id);
+    write(STDOUT_FILENO, msg, len);
+    
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
         snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
@@ -134,6 +146,10 @@ char* deleteDoc (DataStorage* ds, int id){
         perror ("Malloc error");
         return NULL;
     }
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Deleting doc %d\n", id);
+    write(STDOUT_FILENO, msg, len);
+    
     Document* doc = lookupDoc (ds, id);
     if (doc) {
         sendMessageToServer (DELETE, doc);
@@ -193,6 +209,11 @@ char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
         perror ("Malloc error");
         return NULL;
     }
+
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Looking up keyword %s on doc %d\n", keyword, id);
+    write(STDOUT_FILENO, msg, len);
+    
     // gets doc from hash table
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
@@ -299,6 +320,10 @@ int readIds(int fildes[], int** allDocuments, int arraySize) {
 
 
 char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
+    char msg[60];
+    int len = snprintf(msg, sizeof(msg), "Searching for keyword \'%s\' on all documents\n", keyword);
+    write(STDOUT_FILENO, msg, len);
+    
     GPtrArray* docs = getAllDocuments(ds);
     int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
@@ -316,7 +341,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     int arrayInitialSize = 100;
     int* allDocuments = calloc(arrayInitialSize, sizeof(int));
     if (!allDocuments) {
-        perror("calloc");
+        perror("Calloc error");
         return NULL;
     }
     int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
@@ -330,9 +355,12 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     } 
     g_ptr_array_free(docs, TRUE);
 
-    if (!any) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+    if (!any) {
+        free (allDocuments);
+        return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+    }
 
-    int estimatedLength = idCount * 7; // in digits, max 6 digits + /n
+    int estimatedLength = idCount * 12; // in digits, max 11 digits + /n
     char* message = malloc(estimatedLength + 50);
     if (!message) {
         perror ("Malloc error");
