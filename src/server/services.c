@@ -323,6 +323,8 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     write(STDOUT_FILENO, msg, len);
     
     GPtrArray* docs = getAllDocuments(ds);
+    if (!docs) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+    
     int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
 

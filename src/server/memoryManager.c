@@ -179,16 +179,15 @@ GPtrArray* getAllDocuments(DataStorage* data) {
 
     g_hash_table_iter_init(&iter, data->indexSet);
     while (g_hash_table_iter_next(&iter, &idp, NULL)) {
-        Document* doc = g_hash_table_lookup(data->cache->table, idp);
-
-        if (!doc) {
+        Document* doc = g_hash_table_lookup(data->cache->table, idp); // check cache first, only then read from file
+        if (!doc) { 
             doc = readDocFromFile(GPOINTER_TO_INT(idp));
             if (!doc) continue;
         }
 
         g_ptr_array_add(documents, doc);
     }
-
+    if (documents->len == 0) return NULL;
     return documents;
 }
 
