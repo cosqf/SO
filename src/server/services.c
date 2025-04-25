@@ -3,10 +3,9 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <utils.h>
 #include <glib.h>
 #include <sys/wait.h>
-#include <persistence.h>
+#include <memoryManager.h>
 
 #include <services.h>
 

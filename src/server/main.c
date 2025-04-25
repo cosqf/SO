@@ -8,11 +8,10 @@
 #include <sys/wait.h>
 #include <glib.h>
 
-#include <utils.h>
 #include <client/client.h>
 #include <server/server.h>
 #include <server/services.h>
-#include <persistence.h>
+#include <memoryManager.h>
 
 /**
  * @file main.c

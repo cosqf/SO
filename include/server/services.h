@@ -1,6 +1,6 @@
 #include <glib.h>
 #include <protocol.h>
-#include <persistence.h>
+#include <memoryManager.h>
 
 #ifndef SERVICES_H
 #define SERVICES_H

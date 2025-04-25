@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 
 #include <server/server.h>
 #include <server/services.h>
-#include <utils.h>
 #include <glib.h>
 #include <protocol.h>
 
@@ -110,41 +110,40 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
 }
 
 char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds) {
-    char invalidMsg[] = "Invalid command\n";
-    if (!commands || !commands[0]) return invalidMsg;
+    if (!commands || !commands[0]) return "Invalid command\n";
     if (strcmp(commands[0], "-f") == 0) {
         return closeServer();
     }
     else if (strcmp(commands[0], "-a") == 0) {
-        if (!commands[1] || !commands[2] || !commands[3] || !commands[4]) return invalidMsg;
+        if (!commands[1] || !commands[2] || !commands[3] || !commands[4]) return "Invalid command\n";
         int year = convertToNumber (commands[3]);
         if (year == -1) return NULL;
         return addDoc (commands[1], commands[2], year, commands[4], pathDocs);
     }
     else if (strcmp(commands[0], "-c") == 0){
-        if (!commands[1]) return invalidMsg;
+        if (!commands[1]) return "Invalid command\n";
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
         return consultDoc (ds, id);
     }
     else if (strcmp(commands[0], "-d") == 0){
-        if (!commands[1]) return invalidMsg;
+        if (!commands[1]) return "Invalid command\n";
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
         return deleteDoc (ds, id);
     } 
     else if (strcmp (commands[0], "-l") == 0) {
-        if (!commands[1] || !commands[2]) return invalidMsg;
+        if (!commands[1] || !commands[2]) return "Invalid command\n";
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
         return lookupKeyword (ds, id, commands[2]);
     }
     else if (strcmp (commands[0], "-s") == 0) {
-        if (!commands[1]) return invalidMsg;
+        if (!commands[1]) return "Invalid command\n";
         int nr;
         if (noCommands == 2) nr = convertToNumber (commands[2]);
         else nr = 1;
         return lookupDocsWithKeyword (ds, commands[1], nr);
     }
-    else return invalidMsg; 
+    else return "Invalid command\n"; 
 }

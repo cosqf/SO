@@ -77,8 +77,8 @@ int main(int argc, char** argv) {
     freeClientRequest(cInfo);
     close(fifoWrite);
   
-    char msg2[30];
-    int len2 = snprintf(msg2, sizeof(msg), "Waiting for server's response\n");
+    char msg2[35];
+    int len2 = snprintf(msg2, sizeof(msg2), "Waiting for server's response\n");
     write(STDOUT_FILENO, msg2, len2);
  
     // read server's resonse

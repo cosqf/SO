@@ -1,9 +1,10 @@
-#include <persistence.h>
-#include <protocol.h>
 #include <glib.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include <memoryManager.h>
+#include <protocol.h>
 
 /**
  * @brief Populates the index set with document IDs from the disk file.
