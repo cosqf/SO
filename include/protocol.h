@@ -60,11 +60,14 @@ typedef struct message {
 char** decodeClientInfo(ClientRequest cr, int* argcOut);
 
 /** 
- * @brief Wraps a ClientRequest into a Message to the Server */
+ * @brief Wraps a ClientRequest into a Message to the Server. */
 Message* clientToMessage (ClientRequest* cr);
 
 /** 
- * @brief Wraps a ChildRequest into a Message to the Server */
+ * @brief Wraps a ChildRequest into a Message to the Server. */
 Message* childToMessage (ChildRequest* cr);
 
+/**
+ * @brief Converts a string to an int safely. */
+int convertToNumber (char* string);
 #endif

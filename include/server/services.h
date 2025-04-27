@@ -1,6 +1,6 @@
 #include <glib.h>
 #include <protocol.h>
-#include <persistence.h>
+#include <memoryManager.h>
 
 #ifndef SERVICES_H
 #define SERVICES_H
@@ -26,10 +26,11 @@ char* closeServer ();
  * @param year      The publication year of the document.
  * @param fileName  The name of the file containing the document.
  * @param pathDocs  The directory path where documents are stored.
+ * @param idCount   The last set ID.
  * 
  * @return A dynamically allocated message indicating success or failure.
  */
-char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs);
+char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs, int idCount);
 
 /**
  * @brief Retrieves and displays information for a document by ID.

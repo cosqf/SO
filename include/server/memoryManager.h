@@ -1,8 +1,8 @@
 #include <glib.h>
 #include <protocol.h>
 
-#ifndef PERSISTENCE_H
-#define PERSISTENCE_H
+#ifndef MEMORY_MANAGER_H
+#define MEMORY_MANAGER_H
 
 #define DISKFILE_PATH "tmp/data.bin"
 

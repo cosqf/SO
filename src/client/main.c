@@ -28,8 +28,6 @@
  *  - dclient -l "key" "keyword"                   (count keyword occurrences in a document)
  *  - dclient -s "keyword" ["nr_procs"]            (search documents with keyword using concurrent search)
  */
-int main(int argc, char** argv);
-
 int main(int argc, char** argv) {
     // open server FIFO (write only)
     int fifoWrite = open (SERVER_PATH, O_WRONLY);
@@ -52,7 +50,9 @@ int main(int argc, char** argv) {
     }
     Message* msg = clientToMessage (cInfo);
 
-    printf ("talking to server\n");
+    char msg1[30];
+    int len1 = snprintf(msg1, sizeof(msg1), "Talking to the server...\n");
+    write(STDOUT_FILENO, msg1, len1);
 
     // send client info to server
     int bytesWritten = write (fifoWrite, msg, sizeof (Message));
@@ -64,7 +64,6 @@ int main(int argc, char** argv) {
         unlink(pathFifo);
         return 1;
     }
-    printf ("opening client pipe\n");
 
     // open pipe to get server's response
     int fifoRead = open (pathFifo, O_RDONLY);
@@ -77,7 +76,10 @@ int main(int argc, char** argv) {
     free (msg);
     freeClientRequest(cInfo);
     close(fifoWrite);
-    printf ("waiting for servers response\n");
+  
+    char msg2[35];
+    int len2 = snprintf(msg2, sizeof(msg2), "Waiting for server's response\n");
+    write(STDOUT_FILENO, msg2, len2);
  
     // read server's resonse
     int sizeResponse; // first read the size of the message

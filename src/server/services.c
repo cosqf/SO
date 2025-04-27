@@ -3,10 +3,9 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <utils.h>
 #include <glib.h>
 #include <sys/wait.h>
-#include <persistence.h>
+#include <memoryManager.h>
 
 #include <services.h>
 
@@ -63,16 +62,20 @@ char* closeServer () {
         perror ("Malloc error");
         return NULL;
     }
+
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Shutting down server...\n");
+    write(STDOUT_FILENO, msg, len);
     
     snprintf (message, 20, "-- Closed server!\n");
     sendMessageToServer (EXIT, NULL);
     return message;
 }
 
-char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs) {
+char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs, int idCount) {
     char fullPath[100]= {0};
     snprintf (fullPath, 100, "%s%s", pathDocs, fileName);
-
+    
     char* message = malloc (50);
     if (!message) {
         perror ("Malloc error");
@@ -86,7 +89,11 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
         return message;
     }
 
-    int id = (int) time(NULL) ^ getpid();
+    int id = idCount;
+
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Adding doc %d\n", id);
+    write(STDOUT_FILENO, msg, len);
 
     Document* doc = calloc (1, sizeof (Document)); 
     if (!doc) {
@@ -114,7 +121,10 @@ char* consultDoc (DataStorage* ds, int id) {
         perror ("Malloc error");
         return NULL;
     }
-
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Looking up doc %d\n", id);
+    write(STDOUT_FILENO, msg, len);
+    
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
         snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
@@ -123,7 +133,7 @@ char* consultDoc (DataStorage* ds, int id) {
     sendMessageToServer (LOOKUP, doc);
 
     snprintf(message, 600, 
-        "\n-- Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
+        "\n-- Document Information --\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
@@ -134,6 +144,10 @@ char* deleteDoc (DataStorage* ds, int id){
         perror ("Malloc error");
         return NULL;
     }
+    char msg[30];
+    int len = snprintf(msg, sizeof(msg), "Deleting doc %d\n", id);
+    write(STDOUT_FILENO, msg, len);
+    
     Document* doc = lookupDoc (ds, id);
     if (doc) {
         sendMessageToServer (DELETE, doc);
@@ -187,16 +201,21 @@ int checkDocForKeywordCount (Document* doc, char* keyword) {
 }
 
 char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
-    int maxSizeMessage = 60;
+    int maxSizeMessage = 70;
     char* message = malloc(maxSizeMessage);
     if (!message) {
         perror ("Malloc error");
         return NULL;
     }
+
+    char msg[50];
+    int len = snprintf(msg, sizeof(msg), "Looking up keyword %s on doc %d\n", keyword, id);
+    write(STDOUT_FILENO, msg, len);
+    
     // gets doc from hash table
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
-        snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
+        snprintf (message, 40, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
     sendMessageToServer (LOOKUP, doc);
@@ -299,7 +318,13 @@ int readIds(int fildes[], int** allDocuments, int arraySize) {
 
 
 char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
+    char msg[60];
+    int len = snprintf(msg, sizeof(msg), "Searching for keyword \'%s\' on all documents\n", keyword);
+    write(STDOUT_FILENO, msg, len);
+    
     GPtrArray* docs = getAllDocuments(ds);
+    if (!docs) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+    
     int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
 
@@ -316,7 +341,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     int arrayInitialSize = 100;
     int* allDocuments = calloc(arrayInitialSize, sizeof(int));
     if (!allDocuments) {
-        perror("calloc");
+        perror("Calloc error");
         return NULL;
     }
     int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
@@ -330,9 +355,12 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     } 
     g_ptr_array_free(docs, TRUE);
 
-    if (!any) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+    if (!any) {
+        free (allDocuments);
+        return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+    }
 
-    int estimatedLength = idCount * 7; // in digits, max 6 digits + /n
+    int estimatedLength = idCount * 12; // in digits, max 11 digits + /n
     char* message = malloc(estimatedLength + 50);
     if (!message) {
         perror ("Malloc error");
