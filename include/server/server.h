@@ -30,8 +30,9 @@ void notifyChildExit();
  * @param buf         The ClientRequest structure containing the command info and FIFO path.
  * @param docPath     The path to the document directory.
  * @param ds          A pointer to the DataStorage structure used to access cached/indexed documents.
+ * @param idCount     The last ID that was set.
  */
-void readClient (ClientRequest buf, char* docPath, DataStorage* ds); 
+void readClient (ClientRequest buf, char* docPath, DataStorage* ds, int idCount); 
 
 /**
  * @brief Handles internal communication from child processes and manages server-side state.
@@ -39,6 +40,10 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds);
  * This function is called by the parent process to process requests sent from child processes.
  * These requests can be adding, removing or looking up documents, catching a dead child or shutting down the server.
  *
+ * @param ds        A pointer to the DataStorage structure used to access cached/indexed documents.
+ * @param childReq  The ChildRequest structure containing the request.
+ * @param idCount   A pointer to the counter of Document IDs.
+ * 
  * @return int       Returns 0 for normal operations, or 1 in the following cases:
  *                   - Memory allocation failure
  *                   - When the server is instructed to shut down (EXIT command)
@@ -46,7 +51,7 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds);
  * @note This function should only be called by the parent process.
  *       Child processes must not invoke this function.
  */
-int readChild (DataStorage* ds, ChildRequest childReq);
+int readChild (DataStorage* ds, ChildRequest childReq, int* idCount);
 
 /**
  * @brief Processes client commands and performs the corresponding document operations.
@@ -63,9 +68,10 @@ int readChild (DataStorage* ds, ChildRequest childReq);
  * @param noCommands   The number of command arguments received.
  * @param pathDocs     The base path to document files.
  * @param ds           Pointer to the data storage structure managing cache and index.
+ * @param idCount      The last set ID.
  * 
  * @return A dynamically allocated string containing the message to be sent to the Client.
  */
-char* processCommands(char **commands, int noCommands, char* path, DataStorage*);
+char* processCommands(char **commands, int noCommands, char* path, DataStorage*, int idCount);
 
 #endif

@@ -50,16 +50,17 @@ int main(int argc, char **argv) {
     DataStorage* ds = initializeDataStorage (cacheNumber);
 
     Message buf;
+    int idCount = 1;
     while (1) {
         int bytesRead = read (fifoRead, &buf, sizeof (Message));
         if (bytesRead <=0) continue;
    
         if (buf.type == CLIENT) {
             pid_t pid = fork();
-            if (pid == 0) readClient(buf.data.clientReq, argv[1], ds);
+            if (pid == 0) readClient(buf.data.clientReq, argv[1], ds, idCount);
         }
         else {
-            if (readChild (ds, buf.data.childReq)) break;   
+            if (readChild (ds, buf.data.childReq, &idCount)) break;   
         }
     }
     // cleaning up

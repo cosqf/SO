@@ -96,10 +96,7 @@ Document* getDocFromStorage(DataStorage* data, int id) {
     Document* doc = g_hash_table_lookup(data->cache->table, idp);
     if (doc) return doc; // in cache
     
-
-    if (!g_hash_table_contains(data->indexSet, idp)) {
-        return NULL; // not on disk 
-    }
+    if (!g_hash_table_contains(data->indexSet, idp)) return NULL; // not on disk 
 
     doc = readDocFromFile (id);
     if (!doc) return NULL;

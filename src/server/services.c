@@ -72,7 +72,7 @@ char* closeServer () {
     return message;
 }
 
-char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs) {
+char* addDoc (char* title, char* author, short year, char* fileName, char* pathDocs, int idCount) {
     char fullPath[100]= {0};
     snprintf (fullPath, 100, "%s%s", pathDocs, fileName);
     
@@ -89,7 +89,7 @@ char* addDoc (char* title, char* author, short year, char* fileName, char* pathD
         return message;
     }
 
-    int id = (int) time(NULL) ^ getpid();
+    int id = idCount;
 
     char msg[30];
     int len = snprintf(msg, sizeof(msg), "Adding doc %d\n", id);
@@ -133,7 +133,7 @@ char* consultDoc (DataStorage* ds, int id) {
     sendMessageToServer (LOOKUP, doc);
 
     snprintf(message, 600, 
-        "\n-- Document Information--\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
+        "\n-- Document Information --\nId: %d\nTitle: %s\nAuthors: %s\nYear: %d\nPath: %s\n", 
         doc->id, doc->title, doc->authors, doc->year, doc->path);
     return message;  
 }
@@ -201,21 +201,21 @@ int checkDocForKeywordCount (Document* doc, char* keyword) {
 }
 
 char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
-    int maxSizeMessage = 60;
+    int maxSizeMessage = 70;
     char* message = malloc(maxSizeMessage);
     if (!message) {
         perror ("Malloc error");
         return NULL;
     }
 
-    char msg[30];
+    char msg[50];
     int len = snprintf(msg, sizeof(msg), "Looking up keyword %s on doc %d\n", keyword, id);
     write(STDOUT_FILENO, msg, len);
     
     // gets doc from hash table
     Document* doc = lookupDoc (ds, id);
     if (!doc) {
-        snprintf (message, 30, "DOCUMENT ISN'T INDEXED\n");
+        snprintf (message, 40, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
     sendMessageToServer (LOOKUP, doc);

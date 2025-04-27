@@ -34,7 +34,7 @@ void notifyChildExit() {
     close(fd);
 }
 
-void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
+void readClient (ClientRequest buf, char* docPath, DataStorage* ds, int idCount) {
     int fifoWrite = open (buf.fifoPath, O_WRONLY);
     if (fifoWrite == -1) {
         perror ("Failed to open client FIFO");
@@ -43,7 +43,7 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
     }
     int argc;
     char** commands = decodeClientInfo(buf, &argc);
-    char* reply = processCommands(commands, buf.noCommand, docPath, ds);
+    char* reply = processCommands(commands, buf.noCommand, docPath, ds, idCount);
     if (reply) {
         int replySize = strlen(reply);
         write (fifoWrite, &replySize, sizeof (replySize));
@@ -67,7 +67,7 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds) {
     _exit(0);
 }
 
-int readChild (DataStorage* ds, ChildRequest childReq) { 
+int readChild (DataStorage* ds, ChildRequest childReq, int* idCount) { 
     switch (childReq.cmd) {
         case ADD:
             Document* docA = malloc(sizeof(Document));
@@ -77,6 +77,7 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
             }
             *docA = childReq.doc;
             addDocToCache (ds, docA);
+            (*idCount)++;
             return 0;     
 
         case DELETE:
@@ -109,7 +110,7 @@ int readChild (DataStorage* ds, ChildRequest childReq) {
     return 0;
 }
 
-char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds) {
+char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds, int idCount) {
     if (!commands || !commands[0]) return "Invalid command\n";
     if (strcmp(commands[0], "-f") == 0) {
         return closeServer();
@@ -118,7 +119,7 @@ char* processCommands(char **commands, int noCommands, char* pathDocs, DataStora
         if (!commands[1] || !commands[2] || !commands[3] || !commands[4]) return "Invalid command\n";
         int year = convertToNumber (commands[3]);
         if (year == -1) return NULL;
-        return addDoc (commands[1], commands[2], year, commands[4], pathDocs);
+        return addDoc (commands[1], commands[2], year, commands[4], pathDocs, idCount);
     }
     else if (strcmp(commands[0], "-c") == 0){
         if (!commands[1]) return "Invalid command\n";
