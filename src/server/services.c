@@ -323,10 +323,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     write(STDOUT_FILENO, msg, len);
     
     GPtrArray* docs = getAllDocuments(ds);
-    if (!docs) {
-        char* noDocsMsg = strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
-        return noDocsMsg;
-    }
+    if (!docs) return strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
 
     int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
@@ -356,8 +353,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     g_ptr_array_free(docs, TRUE);
     if (!any) {
         free (allDocuments);
-        char* noDocsMsg = strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
-        return noDocsMsg;
+        return strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
     }
 
     int estimatedLength = idCount * 12; // in digits, max 11 digits + /n

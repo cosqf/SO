@@ -111,40 +111,40 @@ int readChild (DataStorage* ds, ChildRequest childReq, int* idCount) {
 }
 
 char* processCommands(char **commands, int noCommands, char* pathDocs, DataStorage* ds, int idCount) {
-    if (!commands || !commands[0]) return "Invalid command\n";
+    if (!commands || !commands[0]) return strdup ("Invalid command\n");
     if (strcmp(commands[0], "-f") == 0) {
         return closeServer();
     }
     else if (strcmp(commands[0], "-a") == 0) {
-        if (!commands[1] || !commands[2] || !commands[3] || !commands[4]) return "Invalid command\n";
+        if (!commands[1] || !commands[2] || !commands[3] || !commands[4]) return strdup ("Invalid command\n");
         int year = convertToNumber (commands[3]);
-        if (year == -1) return NULL;
+        if (year == -1) return strdup ("Invalid command\n");
         return addDoc (commands[1], commands[2], year, commands[4], pathDocs, idCount);
     }
     else if (strcmp(commands[0], "-c") == 0){
-        if (!commands[1]) return "Invalid command\n";
+        if (!commands[1]) return strdup ("Invalid command\n");
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
         return consultDoc (ds, id);
     }
     else if (strcmp(commands[0], "-d") == 0){
-        if (!commands[1]) return "Invalid command\n";
+        if (!commands[1]) return strdup ("Invalid command\n");
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
         return deleteDoc (ds, id);
     } 
     else if (strcmp (commands[0], "-l") == 0) {
-        if (!commands[1] || !commands[2]) return "Invalid command\n";
+        if (!commands[1] || !commands[2]) return strdup ("Invalid command\n");
         int id = convertToNumber (commands[1]);
         if (id == -1) return NULL;
         return lookupKeyword (ds, id, commands[2]);
     }
     else if (strcmp (commands[0], "-s") == 0) {
-        if (!commands[1]) return "Invalid command\n";
+        if (!commands[1]) return strdup ("Invalid command\n");
         int nr;
         if (noCommands == 2) nr = convertToNumber (commands[2]);
         else nr = 1;
         return lookupDocsWithKeyword (ds, commands[1], nr);
     }
-    else return "Invalid command\n"; 
+    else return strdup ("Invalid command\n");
 }
