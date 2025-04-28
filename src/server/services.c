@@ -358,7 +358,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         return strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
     }
 
-    int estimatedLength = idCount * 12; // in digits, max 11 digits + /n
+    int estimatedLength = idCount * 6; // in digits, max 5 digits + /n
     char* message = malloc(estimatedLength + 50);
     if (!message) {
         perror ("Malloc error");
