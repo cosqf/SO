@@ -335,6 +335,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         return NULL;
     }
     setUpChildren (nrProcesses, tableSize, fildes, keyword, docs);
+
     // receiving ids 
     int arrayInitialSize = 100;
     int* allDocuments = calloc(arrayInitialSize, sizeof(int));
@@ -344,6 +345,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     }
     int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
     close(fildes[0]);
+
     //catching children
     int any = 0;
     for (int i = 0; i<nrProcesses; i++){
@@ -362,7 +364,7 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         perror ("Malloc error");
         free (allDocuments);
         return NULL;
-        }
+    }
     int msgUsed = snprintf(message, 50, "-- The documents with the keyword are:\n");
     for (int j = 0; j < idCount; j++) {
         msgUsed += snprintf(message + msgUsed, estimatedLength + 50, "%d\n", allDocuments[j]);

@@ -48,9 +48,8 @@ int main(int argc, char **argv) {
 		return 1;
     }
     DataStorage* ds = initializeDataStorage (cacheNumber);
-
     Message buf;
-    int idCount = 1;
+    int idCount = getLastIndexedId (ds) + 1;
     while (1) {
         int bytesRead = read (fifoRead, &buf, sizeof (Message));
         if (bytesRead <=0) continue;

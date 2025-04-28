@@ -19,6 +19,23 @@ void createServerFifo () {
     }
 }
 
+int getLastIndexedId (DataStorage* ds) {
+    GHashTable* index = ds->indexSet;
+    if (!index || g_hash_table_size(index) == 0) return 0;
+
+    GHashTableIter iter;
+    gpointer key;
+    int biggest = 0;
+
+    g_hash_table_iter_init(&iter, index);
+    while (g_hash_table_iter_next(&iter, &key, NULL)) {
+        int id = GPOINTER_TO_INT(key);
+        if (id > biggest) biggest = id;
+    }
+
+    return biggest;
+}
+
 void notifyChildExit() {
     Document doc = { .id = getpid() }; 
     ChildRequest req = { .cmd = CHILD_EXIT, .doc = doc };
