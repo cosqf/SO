@@ -171,20 +171,46 @@ void removeDocIndexing (DataStorage* data, int id) {
 
 GPtrArray* getAllDocuments(DataStorage* data) {
     GPtrArray* documents = g_ptr_array_new_with_free_func(free); 
+    int fd = open (DISKFILE_PATH, O_RDONLY);
+    if (fd == -1) {
+        perror ("Failed to open disk data file");
+        g_ptr_array_free(documents, TRUE);
+        return NULL;
+    } 
+    Document doc;
+    while (read (fd, &doc, sizeof(Document)) == sizeof (Document)) { // first add all in disk
+        if (g_hash_table_contains (data->indexSet, GUINT_TO_POINTER (doc.id))) {
+            Document* copy = malloc(sizeof(Document));
+            if (!copy) {
+                perror("Malloc error");
+                continue;
+            }
+            *copy = doc;
+            g_ptr_array_add(documents, copy);
+        }
+    }
+    close (fd);
+
     GHashTableIter iter;
     gpointer idp;
 
-    g_hash_table_iter_init(&iter, data->indexSet);
+    g_hash_table_iter_init(&iter, data->cache->table); // iterate cache and add only those not saved in disk
     while (g_hash_table_iter_next(&iter, &idp, NULL)) {
-        Document* doc = g_hash_table_lookup(data->cache->table, idp); // check cache first, only then read from file
-        if (!doc) { 
-            doc = readDocFromFile(GPOINTER_TO_INT(idp));
-            if (!doc) continue;
-        }
+        Document* docCache = g_hash_table_lookup(data->cache->table, idp);
+        if (g_hash_table_contains (data->indexSet, idp)) continue;
 
-        g_ptr_array_add(documents, doc);
+        Document* copy = malloc(sizeof(Document));
+        if (!copy) {
+            perror("Malloc error");
+            continue;
+        }
+        *copy = *docCache; // deep copy
+        g_ptr_array_add(documents, copy);
     }
-    if (documents->len == 0) return NULL;
+    if (documents->len == 0) {
+        g_ptr_array_free(documents, TRUE);
+        return NULL;
+    }
     return documents;
 }
 

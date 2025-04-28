@@ -195,7 +195,7 @@ int checkDocForKeywordCount (Document* doc, char* keyword) {
             number = convertToNumber (buffer);
         }
         close(fildes[0]);
-        wait(NULL);
+        waitpid(pid, NULL, 0);
     }
     return number;
 }
@@ -323,20 +323,21 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     write(STDOUT_FILENO, msg, len);
     
     GPtrArray* docs = getAllDocuments(ds);
-    if (!docs) return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
-    
+    if (!docs) {
+        char* noDocsMsg = strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
+        return noDocsMsg;
+    }
+
     int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
 
     int status;
     int fildes[2];
-    pipe (fildes);
     if (pipe(fildes) == -1) {
         perror("pipe");
         return NULL;
     }
     setUpChildren (nrProcesses, tableSize, fildes, keyword, docs);
-
     // receiving ids 
     int arrayInitialSize = 100;
     int* allDocuments = calloc(arrayInitialSize, sizeof(int));
@@ -346,7 +347,6 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     }
     int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
     close(fildes[0]);
-
     //catching children
     int any = 0;
     for (int i = 0; i<nrProcesses; i++){
@@ -354,10 +354,10 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         if (WEXITSTATUS (status) == 1) any = 1;
     } 
     g_ptr_array_free(docs, TRUE);
-
     if (!any) {
         free (allDocuments);
-        return "-- NO DOCUMENTS HAVE THE KEYWORD\n";
+        char* noDocsMsg = strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
+        return noDocsMsg;
     }
 
     int estimatedLength = idCount * 12; // in digits, max 11 digits + /n
