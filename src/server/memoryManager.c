@@ -122,7 +122,6 @@ Document* lookupDoc (DataStorage* data, int id) {
 
         addDocToCache (data, doc);
     }
-
     return doc;
 }
 
@@ -130,9 +129,23 @@ Document* lookupDoc (DataStorage* data, int id) {
 void addDocToCache (DataStorage* data, Document* doc) {
     gpointer idp = GUINT_TO_POINTER(doc->id);
     Cache* cache = data->cache;
+    
+    if (cache->cacheSize == 0) { // write directly to disk
+        if (!g_hash_table_contains(data->indexSet, idp)) {
+            int fd = open(DISKFILE_PATH, O_CREAT | O_WRONLY | O_APPEND, 0644);
+            if (fd == -1) perror("Failed to open disk data file");
+            else {
+                write(fd, doc, sizeof(Document));
+                g_hash_table_add(data->indexSet, idp);
+                close(fd);
+            }
+        }
+        free(doc); 
+        return;
+    }
 
-    if (g_hash_table_lookup(cache->table, idp)) {
-        g_queue_remove(cache->LRUList, idp); // refresh LRU
+    if (g_hash_table_lookup(cache->table, idp)) { // refresh LRU
+        g_queue_remove(cache->LRUList, idp);
         g_queue_push_tail(cache->LRUList, idp);
         free (doc);
         return;
@@ -148,8 +161,8 @@ void addDocToCache (DataStorage* data, Document* doc) {
             else {
                 write(fd, evictedDoc, sizeof(Document));
                 g_hash_table_add(data->indexSet, lruId);
+                close(fd);
             }
-            close(fd);
         }
 
         g_hash_table_remove(cache->table, lruId);
