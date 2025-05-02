@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to test cache efficiency with different cache sizes.
-# Assumes ./addGdatasetMetadata.sh Gcatalog.tsv was run first.
-# Usage: ./tests/test_cache.sh
+# Assumes ./scripts/addGdatasetMetadata.sh <Gcatalog_file> was run first.
+# Usage: ./scripts/test_cache.sh
 
 # Checks command usage
 if [ "$#" -ne 0 ]; then
@@ -12,11 +12,11 @@ fi
 CLIENT="./bin/dclient"
 SERVER="./bin/dserver"
 
-CACHE_SIZES="0 10 50 100 200 500" # "0 10 50 100 200 500"
-ACCESS_PAT="hotspot" # "random" | "hotspot"
+CACHE_SIZES="0 10 50 100 200 500" # "0 10 50 100 200 500" - Cache sizes to test with - can be changed
+ACCESS_PAT="hotspot" # "random" | "hotspot" - Acess pattern options to generate IDs to lookup
 
-DOCUMENTS=1645  # Number of documents indexed for test
-REPETITIONS=2000 # Number of operations for test
+DOCUMENTS=1645  # Number of documents indexed for test, used to generate IDs to lookup - can be changed
+REPETITIONS=2000 # Number of operations for each test - can be changed
 
 echo "Starting cache tests:"
 echo ""
@@ -26,7 +26,7 @@ for size in $CACHE_SIZES; do
     TMP_OUTPUT=$(mktemp)
 
     # Boot up server with specified cache size
-    $SERVER Gdataset $size &> "$TMP_OUTPUT" &
+    $SERVER Gdataset $size &> "$TMP_OUTPUT" & # Redirects server output to a temporary file for later analysis
     SERVER_PID=$!
     sleep 2
     
@@ -55,7 +55,7 @@ for size in $CACHE_SIZES; do
         esac
 
         start_time=$(date +%s%N)
-        $CLIENT -c $doc_id > /dev/null 2>&1
+        $CLIENT -c $doc_id > /dev/null 2>&1 # Discards the client output for visual cleanliness
         end_time=$(date +%s%N)
 
         elapsed=$(( (end_time - start_time) / 1000000 ))
@@ -69,7 +69,7 @@ for size in $CACHE_SIZES; do
     # Clean up the temp file
     rm -f "$TMP_OUTPUT"
 
-    # Calculate results
+    # Results
     avg_time=$(echo "scale=1; $TOTAL_TIME / $REPETITIONS" | bc)
     total_time=$(echo "scale=1; $TOTAL_TIME / 1000" | bc)
     hit_ratio=$(echo "scale=1; $TOTAL_HITS * 100 / $REPETITIONS" | bc)
