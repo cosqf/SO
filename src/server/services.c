@@ -11,7 +11,7 @@
 
 /**
  * @brief Creates and initializes a ChildRequest structure with the specified command and document. */
-ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
+ChildRequest* convertChildInfo (enum ChildCommand cmd, const Document* doc) {
     ChildRequest* req = calloc (1, sizeof (ChildRequest));
     if (!req) {
         perror ("Calloc error");
@@ -31,7 +31,7 @@ ChildRequest* convertChildInfo (enum ChildCommand cmd, Document* doc) {
  * @param cmd The command type to send (e.g., ADD, DELETE, LOOKUP, etc.).
  * @param doc A pointer to the Document related to the command.
  */
-void sendMessageToServer (enum ChildCommand cmd, Document* doc) {
+void sendMessageToServer (enum ChildCommand cmd, const Document* doc) {
     ChildRequest* cr = convertChildInfo (cmd, doc);
     if (!cr) {
         perror ("Error converting doc into a command in child");
@@ -125,9 +125,9 @@ char* consultDoc (DataStorage* ds, int id) {
     int len = snprintf(msg, sizeof(msg), "Looking up doc %d\n", id);
     write(STDOUT_FILENO, msg, len);
     
-    Document* doc = lookupDoc (ds, id);
+    const Document* doc = lookupDoc (ds, id);
     if (!doc) {
-        snprintf (message, 35, "-- DOCUMENT %d ISN'T INDEXED\n", id);
+        snprintf (message, 40, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
     }
     sendMessageToServer (LOOKUP, doc);
@@ -148,11 +148,9 @@ char* deleteDoc (DataStorage* ds, int id){
     int len = snprintf(msg, sizeof(msg), "Deleting doc %d\n", id);
     write(STDOUT_FILENO, msg, len);
     
-    Document* doc = lookupDoc (ds, id);
+    const Document* doc = lookupDoc (ds, id);
     if (doc) {
         sendMessageToServer (DELETE, doc);
-        free (doc);
-
         snprintf (message, 45, "-- DOCUMENT %d REMOVED\n", id);
     }
     else snprintf (message, 45, "-- DOCUMENT %d ISN'T INDEXED\n", id);
@@ -171,7 +169,7 @@ char* deleteDoc (DataStorage* ds, int id){
  *
  * @return The number of matching lines, or 0 if not found or on error.
  */
-int checkDocForKeywordCount (Document* doc, char* keyword) {
+int checkDocForKeywordCount (const Document* doc, char* keyword) {
     int fildes[2];
     pipe(fildes);
     pid_t pid = fork();
@@ -213,7 +211,7 @@ char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
     write(STDOUT_FILENO, msg, len);
     
     // gets doc from hash table
-    Document* doc = lookupDoc (ds, id);
+    const Document* doc = lookupDoc (ds, id);
     if (!doc) {
         snprintf (message, 40, "-- DOCUMENT %d ISN'T INDEXED\n", id);
         return message;
@@ -238,7 +236,7 @@ char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
  *
  * @return 1 if keyword is found, 0 otherwise.
  */
-int checkDocForKeyword (Document* doc, char* keyword, int fildes[]){
+int checkDocForKeyword (const Document* doc, char* keyword, int fildes[]){
     int status;
     pid_t pid = fork();
     if (pid == 0) {
@@ -290,35 +288,25 @@ void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword,
 
 /**
  * @brief Reads document IDs from the pipe sent by child processes.
- *
- * Dynamically reallocates array if more IDs are found than expected.
- *
- * @param fildes      Pipe file descriptors.
- * @param allDocuments Output array of document IDs.
- * @param arraySize   Initial allocated size.
- *
- * @return Number of document IDs read.
+ 
+ * @param fildes    Pipe file descriptors (read = fildes[0]).
+ * @return A GArray with the read document IDs.
  */
-int readIds(int fildes[], int** allDocuments, int arraySize) {
-    int docId, i = 0;
-    while (read (fildes[0], &docId, sizeof(docId)) > 0) {
-        if (i >= arraySize) {
-            int* biggerArray = realloc(*allDocuments, arraySize * 2 * sizeof(int));
-            if (!biggerArray) {
-                perror("Realloc failed");
-                break;
-            }
-            *allDocuments = biggerArray;
-            arraySize *= 2;
-        }
-        (*allDocuments)[i++] = docId;
+GArray* readIds(int fildes[]) {
+    GArray* ids = g_array_new(FALSE, FALSE, sizeof(gint));
+    if (!ids) {
+        perror("g_array_new error");
+        return NULL;
     }
-    return i;
+
+    gint docId;
+    while (read(fildes[0], &docId, sizeof(docId)) > 0) g_array_append_val(ids, docId);
+    return ids;
 }
 
 
 char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
-    char msg[60];
+    char msg[80];
     int len = snprintf(msg, sizeof(msg), "Searching for keyword \'%s\' on all documents\n", keyword);
     write(STDOUT_FILENO, msg, len);
     
@@ -328,48 +316,47 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     int tableSize = docs->len; 
     nrProcesses = (nrProcesses > tableSize) ? tableSize : nrProcesses; // cap the nr of processes at size of table
 
-    int status;
     int fildes[2];
     if (pipe(fildes) == -1) {
         perror("pipe");
+        g_ptr_array_free (docs, TRUE);
         return NULL;
     }
     setUpChildren (nrProcesses, tableSize, fildes, keyword, docs);
 
     // receiving ids 
-    int arrayInitialSize = 100;
-    int* allDocuments = calloc(arrayInitialSize, sizeof(int));
-    if (!allDocuments) {
-        perror("Calloc error");
+    GArray* idArray = readIds(fildes);
+    if (!idArray) {
+        g_ptr_array_free(docs, TRUE);
         return NULL;
     }
-    int idCount = readIds(fildes, &allDocuments, arrayInitialSize);
     close(fildes[0]);
 
     //catching children
-    int any = 0;
+    int status, any = 0;
     for (int i = 0; i<nrProcesses; i++){
         wait(&status);
         if (WEXITSTATUS (status) == 1) any = 1;
     } 
     g_ptr_array_free(docs, TRUE);
-    if (!any) {
-        free (allDocuments);
+    
+    if (!any || idArray->len == 0) {
+        g_array_free(idArray, TRUE);
         return strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
     }
-
-    int estimatedLength = idCount * 6; // in digits, max 5 digits + /n
+    
+    int estimatedLength = idArray->len * 6; // in digits, max 5 digits + /n
     char* message = malloc(estimatedLength + 50);
     if (!message) {
         perror ("Malloc error");
-        free (allDocuments);
+        g_array_free(idArray, TRUE);
         return NULL;
     }
     int msgUsed = snprintf(message, 50, "-- The documents with the keyword are:\n");
-    for (int j = 0; j < idCount; j++) {
-        msgUsed += snprintf(message + msgUsed, estimatedLength + 50, "%d\n", allDocuments[j]);
-    }
+    for (guint i = 0; i < idArray->len; i++) {
+        msgUsed += snprintf(message + msgUsed, estimatedLength + 50 - msgUsed, "%d\n", g_array_index(idArray, gint, i));
+    } 
     message[msgUsed] = '\0';
-    free (allDocuments);
+    g_array_free(idArray, TRUE);
     return message;
 }

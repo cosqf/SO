@@ -105,7 +105,7 @@ Document* getDocFromStorage(DataStorage* data, int id) {
 }
 
 
-Document* lookupDoc (DataStorage* data, int id) {
+const Document* lookupDoc (DataStorage* data, int id) {
     gpointer idp = GUINT_TO_POINTER (id);
     Document* doc = g_hash_table_lookup (data->cache->table, idp); 
     if (doc) {  // doc is in cache
@@ -140,7 +140,7 @@ void addDocToCache (DataStorage* data, Document* doc) {
                 close(fd);
             }
         }
-        free(doc); 
+        free (doc);
         return;
     }
 

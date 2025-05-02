@@ -45,7 +45,7 @@ DataStorage* initializeDataStorage(int maxCache);
  * it is read from disk and inserted into the cache. If the document does not exist at all,
  * NULL is returned.
  */
-Document* lookupDoc (DataStorage* data, int id);
+const Document* lookupDoc (DataStorage* data, int id);
 
 
 /**
