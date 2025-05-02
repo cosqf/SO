@@ -147,7 +147,6 @@ void addDocToCache (DataStorage* data, Document* doc) {
     if (g_hash_table_lookup(cache->table, idp)) { // refresh LRU
         g_queue_remove(cache->LRUList, idp);
         g_queue_push_tail(cache->LRUList, idp);
-        free (doc);
         return;
     }
 

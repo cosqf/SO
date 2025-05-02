@@ -346,15 +346,20 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     }
     
     int estimatedLength = idArray->len * 6; // in digits, max 5 digits + /n
-    char* message = malloc(estimatedLength + 50);
+    int totalSize = estimatedLength + 50;
+    char* message = malloc(totalSize);
     if (!message) {
         perror ("Malloc error");
         g_array_free(idArray, TRUE);
         return NULL;
     }
-    int msgUsed = snprintf(message, 50, "-- The documents with the keyword are:\n");
+    int msgUsed = snprintf(message, totalSize, "-- The documents with the keyword are:\n");
     for (guint i = 0; i < idArray->len; i++) {
-        msgUsed += snprintf(message + msgUsed, estimatedLength + 50 - msgUsed, "%d\n", g_array_index(idArray, gint, i));
+        int spaceLeft = totalSize - msgUsed;
+        if (spaceLeft <= 0) break;
+        int using = snprintf(message + msgUsed, spaceLeft, "%d\n", g_array_index(idArray, gint, i));
+        if (using < 0 || using >= spaceLeft) break;
+        msgUsed += using;
     } 
     message[msgUsed] = '\0';
     g_array_free(idArray, TRUE);
