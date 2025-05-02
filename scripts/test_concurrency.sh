@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to test the concurrency search improvements.
-# Assumes ./addGdatasetMetadata.sh Gcatalog.tsv was run first.
-# Usage: ./tests/test_concurrency.sh
+# Assumes ./scripts/addGdatasetMetadata.sh <Gcatalog_file> was run first.
+# Usage: ./scripts/test_concurrency.sh
 
 # Checks command usage
 if [ "$#" -ne 0 ]; then
@@ -12,14 +12,14 @@ fi
 CLIENT="./bin/dclient"
 SERVER="./bin/dserver Gdataset 500"
 
-KEYWORD="law"
-NUM_PROCS="1 2 4 6 8" # "1 2 4 6 8"
-REPETITIONS=10 # Number of operations for test
+KEYWORD="law"           # Keyword - can be changed
+NUM_PROCS="1 2 4 6 8"   # "1 2 4 6 8" - Number of processes to test with - can be changed
+REPETITIONS=10          # Number of operations for each test - can be changed
 
 echo "Starting concurrency tests with keyword $KEYWORD:"
 
 # Boot up server
-$SERVER > /dev/null 2>&1 &
+$SERVER > /dev/null 2>&1 & # Discards the server output for visual cleanliness
 SERVER_PID=$!
 sleep 2
 
@@ -31,7 +31,7 @@ for nump in $NUM_PROCS; do
     
     for (( i=1; i<=$REPETITIONS; i++ )); do
         start_time=$(date +%s%N)
-        $CLIENT -s "$KEYWORD" $nump > /dev/null 2>&1
+        $CLIENT -s "$KEYWORD" $nump > /dev/null 2>&1 # Discards the client output for visual cleanliness
         end_time=$(date +%s%N)
         
         elapsed=$(( (end_time - start_time) / 1000000 ))
@@ -40,7 +40,7 @@ for nump in $NUM_PROCS; do
         echo "  Execution $i duration: $elapsed ms"
     done
 
-    # Calculate results
+    # Results
     avg_time=$(echo "scale=1; $TOTAL_TIME / $REPETITIONS" | bc)
     total_time=$(echo "scale=1; $TOTAL_TIME / 1000" | bc)
 
