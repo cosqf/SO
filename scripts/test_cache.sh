@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to test cache efficiency with different cache sizes.
-# Assumes ./scripts/addGdatasetMetadata.sh <Gcatalog_file> was run first.
 # Usage: ./scripts/test_cache.sh
+# Will reset the server and any indexed files
 
 # Checks command usage
 if [ "$#" -ne 0 ]; then
@@ -12,11 +12,16 @@ fi
 CLIENT="./bin/dclient"
 SERVER="./bin/dserver"
 
-CACHE_SIZES="0 10 50 100 200 500" # "0 10 50 100 200 500" - Cache sizes to test with - can be changed
+CACHE_SIZES="10 50 100 200 500" # "10 50 100 200 500" - Cache sizes to test with - can be changed
 ACCESS_PAT="hotspot" # "random" | "hotspot" - Acess pattern options to generate IDs to lookup
 
 DOCUMENTS=1645  # Number of documents indexed for test, used to generate IDs to lookup - can be changed
 REPETITIONS=2000 # Number of operations for each test - can be changed
+
+# Prepares server for testing - indexes files for test
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
+./scripts/addGdatasetMetadata.sh Gcatalog.tsv > /dev/null 2>&1
 
 echo "Starting cache tests:"
 echo ""
@@ -89,5 +94,9 @@ for size in $CACHE_SIZES; do
     
     echo ""
 done
+
+# Resets server
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
 
 echo "Tests finished."
