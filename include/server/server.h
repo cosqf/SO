@@ -18,7 +18,11 @@ void createServerFifo ();
  */
 void notifyChildExit();
 
-
+/**
+ * @brief Iterates the index set and gets the biggest Id stored.
+ * @return 0 if the set is empty or the biggest number.
+ */
+int getLastIndexedId (DataStorage* ds);
 /**
  * @brief Handles a single client request in a child process.
  *
