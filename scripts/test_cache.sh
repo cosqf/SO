@@ -15,7 +15,7 @@ SERVER="./bin/dserver"
 CACHE_SIZES="10 50 100 200 500" # "10 50 100 200 500" - Cache sizes to test with - can be changed
 ACCESS_PAT="hotspot" # "random" | "hotspot" - Acess pattern options to generate IDs to lookup
 
-DOCUMENTS=1645  # Number of documents indexed for test, used to generate IDs to lookup - can be changed
+DOCUMENTS=1500  # Number of documents indexed for test, used to generate IDs to lookup - can be changed
 REPETITIONS=2000 # Number of operations for each test - can be changed
 
 # Prepares server for testing - indexes files for test
@@ -41,7 +41,7 @@ for size in $CACHE_SIZES; do
     TOTAL_TIME=0
 
     echo "Testing cache size $size with $ACCESS_PAT access"
-    echo "Performing $REPETITIONS lookups..."
+    echo "Performing $REPETITIONS lookups on $DOCUMENTS indexed documents..."
 
     for (( i=1; i<=REPETITIONS; i++ )); do
         # Generate document ID based on pattern
@@ -51,10 +51,10 @@ for size in $CACHE_SIZES; do
                 ;;
             ("hotspot")
                 # 20% of documents get 80% of accesses
-                if (( RANDOM % 5 == 0 )); then
-                    doc_id=$(( RANDOM % (DOCUMENTS/5) + 1 ))
+                if (( RANDOM % 5 == 0 )); then          # 1 in 5 accesses go to cold (non-hotspot) docs
+                    doc_id=$(( RANDOM % (DOCUMENTS*4/5) + DOCUMENTS/5 + 1 ))    # cold access
                 else
-                    doc_id=$(( RANDOM % (DOCUMENTS*4/5) + DOCUMENTS/5 + 1 ))
+                    doc_id=$(( RANDOM % (DOCUMENTS/5) + 1 ))    # hot access
                 fi
                 ;;
         esac
