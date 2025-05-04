@@ -55,7 +55,6 @@ DataStorage* initializeDataStorage (int maxCache) {
 }
 
 
-
 /**
  * @brief Reads a Document from disk by its ID.
  * 
@@ -85,25 +84,6 @@ Document* readDocFromFile (int id) {
     close (fd); 
     return NULL;
 }
-/**
- * @brief Reads a document from storage, first checking if is in cache. 
- * 
- * @param id The ID of the document we're looking for. 
- * @return A pointer to a dynamically allocated Document with the matching ID, or NULL if not found or on error.
- */
-Document* getDocFromStorage(DataStorage* data, int id) {
-    gpointer idp = GUINT_TO_POINTER(id);
-    Document* doc = g_hash_table_lookup(data->cache->table, idp);
-    if (doc) return doc; // in cache
-    
-    if (!g_hash_table_contains(data->indexSet, idp)) return NULL; // not on disk 
-
-    doc = readDocFromFile (id);
-    if (!doc) return NULL;
-    
-    return doc; // successfully read from disk
-}
-
 
 const Document* lookupDoc (DataStorage* data, int id) {
     gpointer idp = GUINT_TO_POINTER (id);

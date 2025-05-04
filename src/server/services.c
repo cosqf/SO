@@ -233,14 +233,13 @@ char* lookupKeyword (DataStorage* ds, int id, char* keyword) {
  * @param doc    Pointer to the Document to search.
  * @param keyword Keyword to look for.
  * @param fildes Pipe for sending the result to the parent.
- *
- * @return 1 if keyword is found, 0 otherwise.
  */
-int checkDocForKeyword (const Document* doc, char* keyword, int fildes[]){
+void checkDocForKeyword (const Document* doc, char* keyword, int fildes[]){
     int status;
     pid_t pid = fork();
+    close (fildes[0]);
     if (pid == 0) {
-        execlp ("grep", "grep", "-q", "-w", keyword, doc->path, NULL); // -q -> quiet, no output
+        execlp ("grep", "grep", "-q", "-w", "-i", keyword, doc->path, NULL); // -q -> quiet, no output
         _exit (1);
     }
     else {
@@ -248,10 +247,8 @@ int checkDocForKeyword (const Document* doc, char* keyword, int fildes[]){
         if (WEXITSTATUS(status) != 1) {
             int id = doc->id;
             write (fildes[1], &id, sizeof (id));
-            return 1;
         }
     }
-    return 0;
 }
 
 /**
@@ -270,17 +267,15 @@ void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword,
     int chunkSize = (tableSize + nrProcesses - 1) / nrProcesses;
     for (int i = 0; i < nrProcesses; i++) {
         pid_t pid = fork();
-        int any = 0;
         if (pid == 0) {
             int start = i * chunkSize;
             int end = (start + chunkSize > tableSize) ? tableSize : start + chunkSize;
 
             for (int j = start; j < end; ++j) {
                 Document* doc = docs->pdata[j];
-                int result = checkDocForKeyword(doc, keyword, fildes);
-                if (!any && result) any = 1; 
+                checkDocForKeyword(doc, keyword, fildes);
             }
-            _exit(any);
+            _exit(1);
         }
     }
     close (fildes[1]);
@@ -293,13 +288,13 @@ void setUpChildren (int nrProcesses, int tableSize, int fildes[], char* keyword,
  * @return A GArray with the read document IDs.
  */
 GArray* readIds(int fildes[]) {
-    GArray* ids = g_array_new(FALSE, FALSE, sizeof(gint));
+    GArray* ids = g_array_new(FALSE, FALSE, sizeof(int));
     if (!ids) {
         perror("g_array_new error");
         return NULL;
     }
 
-    gint docId;
+    int docId;
     while (read(fildes[0], &docId, sizeof(docId)) > 0) g_array_append_val(ids, docId);
     return ids;
 }
@@ -333,14 +328,11 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
     close(fildes[0]);
 
     //catching children
-    int status, any = 0;
-    for (int i = 0; i<nrProcesses; i++){
-        wait(&status);
-        if (WEXITSTATUS (status) == 1) any = 1;
-    } 
+    int status;
+    for (int i = 0; i<nrProcesses; i++) wait(&status);
     g_ptr_array_free(docs, TRUE);
     
-    if (!any || idArray->len == 0) {
+    if (idArray->len == 0) {
         g_array_free(idArray, TRUE);
         return strdup("-- NO DOCUMENTS HAVE THE KEYWORD\n");
     }
@@ -354,11 +346,11 @@ char* lookupDocsWithKeyword (DataStorage* ds, char* keyword, int nrProcesses) {
         return NULL;
     }
     int msgUsed = snprintf(message, totalSize, "-- The documents with the keyword are:\n");
-    for (guint i = 0; i < idArray->len; i++) {
+    for (int i = 0; i < idArray->len; i++) {
         int spaceLeft = totalSize - msgUsed;
         if (spaceLeft <= 0) break;
-        int using = snprintf(message + msgUsed, spaceLeft, "%d\n", g_array_index(idArray, gint, i));
-        if (using < 0 || using >= spaceLeft) break;
+        int using = snprintf(message + msgUsed, spaceLeft, "%d\n", g_array_index(idArray, int, i));
+        if (using < 0 || using > spaceLeft) break;
         msgUsed += using;
     } 
     message[msgUsed] = '\0';
