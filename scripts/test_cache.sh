@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to test cache efficiency with different cache sizes.
-# Assumes ./scripts/addGdatasetMetadata.sh <Gcatalog_file> was run first.
 # Usage: ./scripts/test_cache.sh
+# Will reset the server and any indexed files
 
 # Checks command usage
 if [ "$#" -ne 0 ]; then
@@ -17,6 +17,11 @@ ACCESS_PAT="hotspot" # "random" | "hotspot" - Acess pattern options to generate 
 
 DOCUMENTS=1500  # Number of documents indexed for test, used to generate IDs to lookup - can be changed
 REPETITIONS=100000 # Number of operations for each test - can be changed
+
+# Prepares server for testing - indexes files for test
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
+./scripts/addGdatasetMetadata.sh Gcatalog.tsv > /dev/null 2>&1
 
 echo "Starting cache tests:"
 echo ""
@@ -36,7 +41,7 @@ for size in $CACHE_SIZES; do
     TOTAL_TIME=0
 
     echo "Testing cache size $size with $ACCESS_PAT access"
-    echo "Performing $REPETITIONS lookups..."
+    echo "Performing $REPETITIONS lookups on $DOCUMENTS indexed documents..."
 
     for (( i=1; i<=REPETITIONS; i++ )); do
         # Generate document ID based on pattern
@@ -46,10 +51,10 @@ for size in $CACHE_SIZES; do
                 ;;
             ("hotspot")
                 # 20% of documents get 80% of accesses
-                if (( RANDOM % 5 == 0 )); then
-                    doc_id=$(( RANDOM % (DOCUMENTS/5) + 1 ))
+                if (( RANDOM % 5 == 0 )); then          # 1 in 5 accesses go to cold (non-hotspot) docs
+                    doc_id=$(( RANDOM % (DOCUMENTS*4/5) + DOCUMENTS/5 + 1 ))    # cold access
                 else
-                    doc_id=$(( RANDOM % (DOCUMENTS*4/5) + DOCUMENTS/5 + 1 ))
+                    doc_id=$(( RANDOM % (DOCUMENTS/5) + 1 ))    # hot access
                 fi
                 ;;
         esac
@@ -89,5 +94,9 @@ for size in $CACHE_SIZES; do
     
     echo ""
 done
+
+# Resets server
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
 
 echo "Tests finished."

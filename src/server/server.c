@@ -159,7 +159,10 @@ char* processCommands(char **commands, int noCommands, char* pathDocs, DataStora
     else if (strcmp (commands[0], "-s") == 0) {
         if (!commands[1]) return strdup ("Invalid command\n");
         int nr;
-        if (noCommands == 2) nr = convertToNumber (commands[2]);
+        if (noCommands == 2) {
+            nr = convertToNumber (commands[2]);
+            if (nr == 0) return strdup ("Invalid command\n");
+        }
         else nr = 1;
         return lookupDocsWithKeyword (ds, commands[1], nr);
     }

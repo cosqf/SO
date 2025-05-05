@@ -1,7 +1,7 @@
 #!/bin/bash
 # Script to test the concurrency search improvements.
-# Assumes ./scripts/addGdatasetMetadata.sh <Gcatalog_file> was run first.
 # Usage: ./scripts/test_concurrency.sh
+# Will reset the server and any indexed files
 
 # Checks command usage
 if [ "$#" -ne 0 ]; then
@@ -15,6 +15,11 @@ SERVER="./bin/dserver Gdataset 500"
 KEYWORD="law"           # Keyword - can be changed
 NUM_PROCS="1 2 4 6 8"   # "1 2 4 6 8" - Number of processes to test with - can be changed
 REPETITIONS=10          # Number of operations for each test - can be changed
+
+# Prepares server for testing - indexes files for test
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
+./scripts/addGdatasetMetadata.sh Gcatalog.tsv > /dev/null 2>&1
 
 echo "Starting concurrency tests with keyword $KEYWORD:"
 
@@ -56,6 +61,10 @@ done
 # Stop the server
 $CLIENT -f
 wait $SERVER_PID
+
+# Resets server
+make clean > /dev/null 2>&1
+make > /dev/null 2>&1
 
 echo ""
 echo "Tests finished."
