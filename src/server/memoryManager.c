@@ -14,16 +14,22 @@
  *
  * @param data Pointer to the DataStorage structure where the indexSet is stored.
  */
-void getIndex (DataStorage* data) {
+void getIndex (DataStorage* data, int cacheSize) {
     GHashTable* indexSet = data->indexSet;
     int fd = open (DISKFILE_PATH, O_RDONLY | O_CREAT, 0644);
     if (fd == -1) {
         perror ("Failed to open disk data file");
         return;
     }
+    int i = 0;
     Document docRead;
     while (read(fd, &docRead, sizeof(Document)) == sizeof(Document)) {
         g_hash_table_add(indexSet, GINT_TO_POINTER(docRead.id));
+        if (i++ < cacheSize) {
+            Document* doc = malloc (sizeof (Document));
+            *doc = docRead;
+            addDocToCache (data, doc);
+        }
     }
     close (fd);
 }
@@ -50,7 +56,7 @@ DataStorage* initializeDataStorage (int maxCache) {
     ds->cache = cache;
     ds->indexSet = index;
 
-    getIndex(ds);
+    getIndex(ds, maxCache);
     return ds;
 }
 
@@ -109,8 +115,6 @@ const Document* lookupDoc (DataStorage* data, int id) {
     gpointer idp = GUINT_TO_POINTER (id);
     Document* doc = g_hash_table_lookup (data->cache->table, idp); 
     if (doc) {  // doc is in cache
-        g_queue_remove (data->cache->LRUList, idp); // move to end of queue (most recently used) 
-        g_queue_push_tail (data->cache->LRUList, idp);
         write (STDOUT_FILENO, "Cache hit\n", sizeof ("Cache hit\n"));
     }
     else {
@@ -119,8 +123,6 @@ const Document* lookupDoc (DataStorage* data, int id) {
 
         doc = readDocFromFile (id);
         if (!doc) return NULL;
-
-        addDocToCache (data, doc);
     }
     return doc;
 }
