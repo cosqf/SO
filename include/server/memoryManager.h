@@ -39,11 +39,9 @@ DataStorage* initializeDataStorage(int maxCache);
 /**
  * @brief Retrieves a document by ID from the cache or disk.
  *
- * This function attempts to retrieve a document from the cache. If the document is found,
- * it updates its position in the LRU (Least Recently Used) queue to mark it as recently used.
+ * This function attempts to retrieve a document from the cache.
  * If the document is not in the cache but exists on disk (as determined by the index set),
- * it is read from disk and inserted into the cache. If the document does not exist at all,
- * NULL is returned.
+ * it is read from disk. If the document does not exist at all, NULL is returned.
  */
 const Document* lookupDoc (DataStorage* data, int id);
 
