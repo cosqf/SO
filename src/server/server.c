@@ -11,6 +11,7 @@
 #include <server/services.h>
 #include <glib.h>
 #include <protocol.h>
+#define MAX_FIFO_SIZE 512
 
 void createServerFifo () {
     if (mkfifo(SERVER_PATH, 0666) == -1) {
@@ -63,6 +64,9 @@ void readClient (ClientRequest buf, char* docPath, DataStorage* ds, int idCount)
     char* reply = processCommands(commands, buf.noCommand, docPath, ds, idCount);
     if (reply) {
         int replySize = strlen(reply);
+
+        if (replySize > MAX_FIFO_SIZE) replySize = MAX_FIFO_SIZE; // truncate if the message overflows the pipe
+    
         write (fifoWrite, &replySize, sizeof (replySize));
         write (fifoWrite, reply, replySize);
         free (reply);
