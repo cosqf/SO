@@ -16,7 +16,7 @@ CACHE_SIZES="0 100 200 300" # "0 10 50 100 200 500" - Cache sizes to test with -
 ACCESS_PAT="hotspot" # "random" | "hotspot" - Acess pattern options to generate IDs to lookup
 
 DOCUMENTS=1500  # Number of documents indexed for test, used to generate IDs to lookup - can be changed
-REPETITIONS=100000 # Number of operations for each test - can be changed
+REPETITIONS=10000 # Number of operations for each test - can be changed
 
 # Prepares server for testing - indexes files for test
 make clean > /dev/null 2>&1

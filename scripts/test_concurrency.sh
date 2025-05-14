@@ -13,8 +13,8 @@ CLIENT="./bin/dclient"
 SERVER="./bin/dserver Gdataset 500"
 
 KEYWORD="law"           # Keyword - can be changed
-NUM_PROCS="1 2 4 6 8"   # "1 2 4 6 8" - Number of processes to test with - can be changed
-REPETITIONS=10          # Number of operations for each test - can be changed
+NUM_PROCS="1 2 3 4 5 6 7 8 9 10"   # Number of processes to test with - can be changed
+REPETITIONS=100          # Number of operations for each test - can be changed
 
 # Prepares server for testing - indexes files for test
 make clean > /dev/null 2>&1
@@ -41,8 +41,6 @@ for nump in $NUM_PROCS; do
         
         elapsed=$(( (end_time - start_time) / 1000000 ))
         TOTAL_TIME=$(( TOTAL_TIME + elapsed ))
-        
-        echo "  Execution $i duration: $elapsed ms"
     done
 
     # Results
